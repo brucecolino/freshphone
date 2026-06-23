@@ -1,0 +1,263 @@
+// FreshPhone — schema dati (Postgres).
+// Copre: auth (Auth.js v5), ordini, licenze, attivazioni, carrelli (abbandono),
+// codici promo, newsletter, impostazioni sito (CMS) e audit log admin.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Enums =====
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  MONTHLY
+  SIXMONTH
+  YEARLY
+  LIFETIME
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CANCELED
+  FAILED
+}
+
+enum SubscriptionStatus {
+  NONE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum CartStatus {
+  OPEN
+  ABANDONED
+  RECOVERED
+  COMPLETED
+}
+
+enum PromoType {
+  PERCENT
+  FIXED
+}
+
+enum SubscriberStatus {
+  PENDING
+  CONFIRMED
+  UNSUBSCRIBED
+}
+
+// ===== Auth.js (NextAuth v5) =====
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  accounts      Account[]
+  sessions      Session[]
+  orders        Order[]
+  licenses      License[]
+  carts         Cart[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===== Commerce =====
+
+model Order {
+  id                     String          @id @default(cuid())
+  user                   User?           @relation(fields: [userId], references: [id])
+  userId                 String?
+  email                  String
+  plan                   Plan
+  provider               PaymentProvider
+  providerCheckoutId     String?         @unique // Stripe session id / PayPal order id
+  providerSubscriptionId String?
+  amountCents            Int
+  currency               String          @default("eur")
+  status                 OrderStatus     @default(PENDING)
+  promoCode              PromoCode?      @relation(fields: [promoCodeId], references: [id])
+  promoCodeId            String?
+  license                License?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
+model License {
+  id                 String              @id @default(cuid())
+  key                String              @unique
+  user               User?               @relation(fields: [userId], references: [id])
+  userId             String?
+  order              Order?              @relation(fields: [orderId], references: [id])
+  orderId            String?             @unique
+  plan               Plan
+  status             LicenseStatus       @default(ACTIVE)
+  subscriptionStatus SubscriptionStatus  @default(NONE)
+  seatLimit          Int                 @default(1)
+  issuedAt           DateTime            @default(now())
+  expiresAt          DateTime?
+  lastResentAt       DateTime?
+  activations        LicenseActivation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model LicenseActivation {
+  id          String   @id @default(cuid())
+  license     License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  licenseId   String
+  machineId   String
+  machineName String?
+  revoked     Boolean  @default(false)
+  activatedAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([licenseId, machineId])
+}
+
+model Cart {
+  id            String     @id @default(cuid())
+  user          User?      @relation(fields: [userId], references: [id])
+  userId        String?
+  email         String?
+  plan          Plan
+  status        CartStatus @default(OPEN)
+  recoveryToken String     @unique @default(cuid())
+  promoCode     PromoCode? @relation(fields: [promoCodeId], references: [id])
+  promoCodeId   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  abandonedAt   DateTime?
+  recoveredAt   DateTime?
+
+  @@index([status])
+  @@index([email])
+}
+
+model PromoCode {
+  id             String            @id @default(cuid())
+  code           String            @unique
+  type           PromoType
+  value          Int // percentuale (1-100) o centesimi
+  active         Boolean           @default(true)
+  appliesToPlans Plan[] // vuoto = tutti i piani
+  maxRedemptions Int?
+  redeemedCount  Int               @default(0)
+  singleUse      Boolean           @default(false)
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  orders         Order[]
+  carts          Cart[]
+  redemptions    PromoRedemption[]
+  createdAt      DateTime          @default(now())
+}
+
+model PromoRedemption {
+  id          String    @id @default(cuid())
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+  promoCodeId String
+  email       String
+  orderId     String?
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+}
+
+// ===== Newsletter & CMS =====
+
+model NewsletterSubscriber {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  status       SubscriberStatus @default(PENDING)
+  confirmToken String?          @unique
+  unsubToken   String           @unique @default(cuid())
+  consentAt    DateTime?
+  source       String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorEmail String
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+}
