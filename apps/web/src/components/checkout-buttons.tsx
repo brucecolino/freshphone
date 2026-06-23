@@ -8,16 +8,12 @@ export function CheckoutButtons({ plan }: { plan: string }) {
 
   async function buy(provider: 'stripe' | 'paypal') {
     setError(null)
-    if (provider === 'paypal') {
-      setError('PayPal sarà disponibile a breve. Per ora usa la carta.')
-      return
-    }
     setLoading(provider)
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, provider }),
       })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) {
