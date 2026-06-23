@@ -18,6 +18,7 @@ const body = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: 'FreshPhone — Gestore file iPhone per Windows',
   description:
     'Libera spazio sul tuo iPhone senza iTunes. Visualizza, ordina e sposta foto, video e file sul PC conservando tutti i metadati, poi cancella in sicurezza.',
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
     title: 'FreshPhone — Gestore file iPhone per Windows',
     description: 'Organizza il tuo iPhone e fai spazio, senza iTunes.',
     type: 'website',
+    images: ['/freshphone-logo.png'],
   },
 }
 
