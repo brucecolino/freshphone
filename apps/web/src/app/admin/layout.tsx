@@ -9,9 +9,9 @@ const nav: { href: string; label: string; ready: boolean }[] = [
   { href: '/admin/orders', label: 'Ordini', ready: true },
   { href: '/admin/licenses', label: 'Licenze', ready: false },
   { href: '/admin/carts', label: 'Carrelli', ready: true },
-  { href: '/admin/promos', label: 'Codici promo', ready: false },
+  { href: '/admin/promos', label: 'Codici promo', ready: true },
   { href: '/admin/newsletter', label: 'Newsletter', ready: false },
-  { href: '/admin/settings', label: 'Impostazioni', ready: false },
+  { href: '/admin/settings', label: 'Impostazioni', ready: true },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

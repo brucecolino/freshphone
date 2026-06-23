@@ -3,6 +3,7 @@ import { Poppins, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
+import { PromoBanner } from '@/components/promo-banner'
 
 const display = Poppins({
   subsets: ['latin'],
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${display.variable} ${body.variable} font-sans antialiased`}>
+        <PromoBanner />
         <SiteNav />
         <main>{children}</main>
         <SiteFooter />
