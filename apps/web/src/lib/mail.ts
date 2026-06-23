@@ -44,3 +44,17 @@ export function newsletterConfirmHtml(opts: { confirmUrl: string }): string {
   <p style="font-size:12px;color:#5a6b75">Se non sei stato tu, ignora questa email.</p>
 </div>`
 }
+
+export function newsletterCampaignHtml(opts: { message: string; promoCode?: string; unsubUrl: string }): string {
+  const body = opts.message.replace(/\n/g, '<br>')
+  const promo = opts.promoCode
+    ? `<p style="font-size:18px;font-weight:700;padding:12px 16px;border:1px solid #e6ecf1;border-radius:10px;display:inline-block">Codice: ${opts.promoCode}</p>`
+    : ''
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:auto;color:#16242c">
+  <div>${body}</div>
+  ${promo}
+  <p style="margin-top:18px"><a href="${SITE}/pricing" style="background:#1fa08c;color:#fff;padding:10px 18px;border-radius:999px;text-decoration:none">Vai a FreshPhone</a></p>
+  <hr style="border:none;border-top:1px solid #e6ecf1;margin:20px 0">
+  <p style="font-size:12px;color:#5a6b75">Non vuoi più ricevere queste email? <a href="${opts.unsubUrl}">Disiscriviti</a>.</p>
+</div>`
+}

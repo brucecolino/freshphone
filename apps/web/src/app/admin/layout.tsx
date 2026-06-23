@@ -10,7 +10,7 @@ const nav: { href: string; label: string; ready: boolean }[] = [
   { href: '/admin/licenses', label: 'Licenze', ready: false },
   { href: '/admin/carts', label: 'Carrelli', ready: true },
   { href: '/admin/promos', label: 'Codici promo', ready: true },
-  { href: '/admin/newsletter', label: 'Newsletter', ready: false },
+  { href: '/admin/newsletter', label: 'Newsletter', ready: true },
   { href: '/admin/settings', label: 'Impostazioni', ready: true },
 ]
 
