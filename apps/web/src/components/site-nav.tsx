@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
 import { Logo } from './logo'
 import { ThemeToggle } from './theme-toggle'
 
@@ -48,10 +47,10 @@ export function SiteNav() {
           <ThemeToggle />
           <button
             onClick={() => setOpen(!open)}
-            aria-label="Apri menu"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink"
+            aria-expanded={open}
+            className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink"
           >
-            {open ? <X size={18} /> : <Menu size={18} />}
+            {open ? 'Chiudi' : 'Menu'}
           </button>
         </div>
       </nav>

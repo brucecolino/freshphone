@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { CreditCard, Info } from 'lucide-react'
 import { PLANS, formatEur, isPaidPlan, type PlanId } from '@freshphone/shared'
 
 export const metadata: Metadata = {
@@ -44,29 +43,30 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <div className="mt-6 space-y-3">
             <button
               disabled
-              className="bg-grad flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white opacity-60"
+              className="bg-grad w-full rounded-full px-4 py-3 text-sm font-semibold text-white opacity-60"
             >
-              <CreditCard size={17} /> Paga con carta (Stripe)
+              Paga con carta (Stripe)
             </button>
             <button
               disabled
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-line px-4 py-3 text-sm font-semibold text-ink opacity-60"
+              className="w-full rounded-full border border-line px-4 py-3 text-sm font-semibold text-ink opacity-60"
             >
               Paga con PayPal
             </button>
           </div>
 
-          <div className="mt-5 flex gap-2 rounded-lg bg-grad-soft p-3 text-xs text-ink2">
-            <Info size={15} className="mt-0.5 shrink-0 text-brand" />
-            <span>
-              Il pagamento è in fase di attivazione: stiamo collegando Stripe e PayPal. Appena pronto, qui completerai
-              l’acquisto e riceverai subito la licenza nell’area personale.
-            </span>
-          </div>
+          <p className="mt-5 rounded-lg bg-grad-soft p-3 text-xs text-ink2">
+            Il pagamento è in fase di attivazione: stiamo collegando Stripe e PayPal. Appena pronto, qui completerai
+            l’acquisto e riceverai subito la licenza nell’area personale.
+          </p>
         </div>
 
         <p className="mt-4 text-center text-xs text-ink2">
-          Cambia piano dalla <Link href="/pricing" className="text-brand hover:underline">pagina prezzi</Link>.
+          Cambia piano dalla{' '}
+          <Link href="/pricing" className="text-brand hover:underline">
+            pagina prezzi
+          </Link>
+          .
         </p>
       </div>
     </section>

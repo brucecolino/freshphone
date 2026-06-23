@@ -1,38 +1,36 @@
 import Link from 'next/link'
-import {
-  Image as ImageIcon,
-  ShieldCheck,
-  MousePointerClick,
-  ArrowDownUp,
-  FolderOpen,
-  Sparkles,
-  Check,
-  X,
-  ArrowRight,
-  Usb,
-  ListFilter,
-  HardDriveDownload,
-} from 'lucide-react'
 import { AppPreview } from '@/components/app-preview'
 import { PricingCards, FreeBanner } from '@/components/pricing-cards'
 
 const features = [
-  { icon: ImageIcon, title: 'Anteprime istantanee', text: 'Miniature reali per HEIC, Live Photo e video. Niente più nomi file anonimi.' },
-  { icon: ShieldCheck, title: 'Metadati intatti', text: 'Data di scatto, GPS ed EXIF restano identici. Copia grezza, mai ricompressa.' },
-  { icon: MousePointerClick, title: 'Drag & drop', text: 'Trascina dal telefono al PC e viceversa, come una cartella qualsiasi.' },
-  { icon: ArrowDownUp, title: 'Ordina e filtra', text: 'Per data, dimensione, tipo — crescente o decrescente — in un clic.' },
-  { icon: FolderOpen, title: 'Non solo foto', text: 'Sfoglia anche documenti e file del dispositivo e gestiscili allo stesso modo.' },
-  { icon: Sparkles, title: 'Libera spazio in sicurezza', text: 'Copia, verifica l’integrità, poi elimina dall’iPhone. Gigabyte recuperati.' },
+  { title: 'Anteprime istantanee', text: 'Miniature reali per HEIC, Live Photo e video. Niente più nomi file anonimi.' },
+  { title: 'Metadati intatti', text: 'Data di scatto, GPS ed EXIF restano identici. Copia grezza, mai ricompressa.' },
+  { title: 'Drag & drop', text: 'Trascina dal telefono al PC e viceversa, come una cartella qualsiasi.' },
+  { title: 'Ordina e filtra', text: 'Per data, dimensione, tipo — crescente o decrescente — in un clic.' },
+  { title: 'Non solo foto', text: 'Sfoglia anche documenti e file del dispositivo e gestiscili allo stesso modo.' },
+  { title: 'Libera spazio in sicurezza', text: 'Copia, verifica l’integrità, poi elimina dall’iPhone. Gigabyte recuperati.' },
 ]
 
 const steps = [
-  { icon: Usb, title: 'Collega l’iPhone', text: 'Driver e permessi configurati in automatico. Funziona con tutti gli iPhone.' },
-  { icon: ListFilter, title: 'Scegli cosa spostare', text: 'Filtra e seleziona foto, video o file. Anche centinaia in un colpo solo.' },
-  { icon: HardDriveDownload, title: 'Sposta e fai spazio', text: 'Esporta sul PC con i metadati, poi cancella in sicurezza dal telefono.' },
+  { n: '01', title: 'Collega l’iPhone', text: 'Driver e permessi configurati in automatico. Funziona con tutti gli iPhone.' },
+  { n: '02', title: 'Scegli cosa spostare', text: 'Filtra e seleziona foto, video o file. Anche centinaia in un colpo solo.' },
+  { n: '03', title: 'Sposta e fai spazio', text: 'Esporta sul PC con i metadati, poi cancella in sicurezza dal telefono.' },
 ]
 
-const itunesCons = ['Sincronizzazione macchinosa e lenta', 'Anteprime assenti o pessime', 'Rischio di perdere metadati e date', 'Niente filtri o ordinamento reali', 'Cancellazione manuale e confusa']
-const fpPros = ['Sposti i file in pochi clic', 'Anteprime reali di foto e video', 'Metadati ed EXIF sempre preservati', 'Ordina e filtra come vuoi', 'Liberi spazio in sicurezza guidato']
+const itunesCons = [
+  'Sincronizzazione macchinosa e lenta',
+  'Anteprime assenti o pessime',
+  'Rischio di perdere metadati e date',
+  'Niente filtri o ordinamento reali',
+  'Cancellazione manuale e confusa',
+]
+const fpPros = [
+  'Sposti i file in pochi clic',
+  'Anteprime reali di foto e video',
+  'Metadati ed EXIF sempre preservati',
+  'Ordina e filtra come vuoi',
+  'Liberi spazio in sicurezza, guidato',
+]
 
 const faqs = [
   { q: 'Funziona con tutti gli iPhone?', a: 'Sì. FreshPhone supporta tutti gli iPhone su Windows 10 e 11, senza jailbreak. I driver necessari vengono installati in automatico al primo avvio.' },
@@ -63,9 +61,9 @@ export default function HomePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/download"
-                className="bg-grad inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
+                className="bg-grad inline-flex items-center rounded-full px-6 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
               >
-                Scarica gratis <ArrowRight size={17} />
+                Scarica gratis
               </Link>
               <Link
                 href="/pricing"
@@ -92,9 +90,7 @@ export default function HomePage() {
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <div key={f.title} className="rounded-xl2 border border-line bg-surface p-6 shadow-sm transition-transform hover:-translate-y-1">
-              <div className="bg-grad-soft inline-flex h-11 w-11 items-center justify-center rounded-xl text-brand">
-                <f.icon size={22} />
-              </div>
+              <div className="bg-grad h-1 w-9 rounded-full" />
               <h3 className="mt-4 font-display text-lg font-semibold">{f.title}</h3>
               <p className="mt-1.5 text-sm text-ink2">{f.text}</p>
             </div>
@@ -110,13 +106,10 @@ export default function HomePage() {
             <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Dal caos al pulito in due minuti</h2>
           </div>
           <div className="mt-12 grid gap-8 md:grid-cols-3">
-            {steps.map((s, i) => (
-              <div key={s.title} className="relative">
-                <div className="bg-grad inline-flex h-12 w-12 items-center justify-center rounded-xl text-white">
-                  <s.icon size={22} />
-                </div>
-                <span className="absolute right-0 top-0 font-display text-5xl font-bold text-line">{i + 1}</span>
-                <h3 className="mt-4 font-display text-lg font-semibold">{s.title}</h3>
+            {steps.map((s) => (
+              <div key={s.n}>
+                <span className="text-grad font-display text-4xl font-bold">{s.n}</span>
+                <h3 className="mt-3 font-display text-lg font-semibold">{s.title}</h3>
                 <p className="mt-1.5 text-sm text-ink2">{s.text}</p>
               </div>
             ))}
@@ -133,10 +126,9 @@ export default function HomePage() {
         <div className="mx-auto mt-12 grid max-w-4xl gap-5 md:grid-cols-2">
           <div className="rounded-xl2 border border-line bg-surface p-6">
             <h3 className="font-display text-lg font-semibold text-ink2">iTunes / Esplora risorse</h3>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-4 divide-y divide-line border-t border-line text-sm">
               {itunesCons.map((c) => (
-                <li key={c} className="flex gap-2.5 text-ink2">
-                  <X size={18} className="mt-0.5 shrink-0 text-ink2" />
+                <li key={c} className="py-3 text-ink2">
                   {c}
                 </li>
               ))}
@@ -144,11 +136,10 @@ export default function HomePage() {
           </div>
           <div className="rounded-xl2 border-2 border-brand bg-surface p-6">
             <h3 className="text-grad font-display text-lg font-bold">FreshPhone</h3>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-4 divide-y divide-line border-t border-line text-sm">
               {fpPros.map((c) => (
-                <li key={c} className="flex gap-2.5">
-                  <Check size={18} className="mt-0.5 shrink-0 text-brand" />
-                  <span>{c}</span>
+                <li key={c} className="py-3 font-medium">
+                  {c}
                 </li>
               ))}
             </ul>
@@ -164,14 +155,12 @@ export default function HomePage() {
             <h2 className="mt-2 text-3xl font-bold sm:text-4xl">Scegli come preferisci</h2>
             <p className="mt-4 text-ink2">Prova gratis, poi passa a un piano a tempo o a vita. Disdici quando vuoi.</p>
           </div>
-          <div className="mt-12">
+          <div className="mx-auto mt-12 max-w-5xl">
             <FreeBanner />
             <div className="mt-6">
               <PricingCards />
             </div>
-            <p className="mt-6 text-center text-xs text-ink2">
-              Pagamenti sicuri con Stripe e PayPal · IVA inclusa dove applicabile
-            </p>
+            <p className="mt-6 text-center text-xs text-ink2">Pagamenti sicuri con Stripe e PayPal · IVA inclusa dove applicabile</p>
           </div>
         </div>
       </section>
@@ -198,14 +187,12 @@ export default function HomePage() {
       <section className="container-x pb-20">
         <div className="bg-grad rounded-xl2 px-8 py-14 text-center text-white">
           <h2 className="text-3xl font-bold sm:text-4xl">Il tuo iPhone, finalmente in ordine</h2>
-          <p className="mx-auto mt-3 max-w-xl text-white/90">
-            Scaricalo gratis e libera i primi gigabyte oggi stesso.
-          </p>
+          <p className="mx-auto mt-3 max-w-xl text-white/90">Scaricalo gratis e libera i primi gigabyte oggi stesso.</p>
           <Link
             href="/download"
-            className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-deep transition-transform hover:scale-[1.03]"
+            className="mt-7 inline-flex items-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-deep transition-transform hover:scale-[1.03]"
           >
-            Scarica FreshPhone <ArrowRight size={17} />
+            Scarica FreshPhone
           </Link>
         </div>
       </section>

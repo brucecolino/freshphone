@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { Check } from 'lucide-react'
 import { PLANS, formatEur, type PlanId } from '@freshphone/shared'
 import { cn } from '@/lib/cn'
 
@@ -45,11 +44,10 @@ export function PricingCards() {
               <span className="font-display text-3xl font-bold">{formatEur(p.priceEur)}</span>
               <span className="text-sm text-ink2">{intervalLabel[p.interval ?? 'once']}</span>
             </div>
-            <ul className="mt-5 flex-1 space-y-2.5 text-sm">
+            <ul className="mt-5 flex-1 divide-y divide-line border-y border-line text-sm">
               {planFeatures[id].map((f) => (
-                <li key={f} className="flex gap-2">
-                  <Check size={17} className="mt-0.5 shrink-0 text-brand" />
-                  <span className="text-ink2">{f}</span>
+                <li key={f} className="py-2.5 text-ink2">
+                  {f}
                 </li>
               ))}
             </ul>

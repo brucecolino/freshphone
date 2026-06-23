@@ -1,4 +1,3 @@
-import { Play } from 'lucide-react'
 import { LogoMark } from './logo'
 import { cn } from '@/lib/cn'
 
@@ -32,16 +31,13 @@ export function AppPreview() {
         <div className="flex-1 p-3">
           <div className="grid grid-cols-4 gap-2">
             {tiles.map((c, i) => (
-              <div key={i} className="relative aspect-square rounded-md" style={{ background: c }}>
+              <div
+                key={i}
+                className={cn('relative aspect-square rounded-md', (i === 3 || i === 7 || i === 11) && 'ring-2 ring-brand ring-offset-2 ring-offset-surface')}
+                style={{ background: c }}
+              >
                 {(i === 2 || i === 6) && (
-                  <span className="absolute bottom-1 right-1 rounded bg-black/55 px-1 text-[10px] text-white">
-                    <Play size={9} className="inline" /> 0:14
-                  </span>
-                )}
-                {(i === 3 || i === 7 || i === 11) && (
-                  <span className="bg-grad absolute right-1 top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] text-white">
-                    ✓
-                  </span>
+                  <span className="absolute bottom-1 right-1 rounded bg-black/55 px-1 text-[10px] text-white">0:14</span>
                 )}
               </div>
             ))}
