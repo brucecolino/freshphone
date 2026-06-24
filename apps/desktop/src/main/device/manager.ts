@@ -65,6 +65,17 @@ export async function browse(path: string): Promise<MediaItem[]> {
   return agent.tryCall<MediaItem[]>('browse', { path }, [], 30000)
 }
 
+export interface AnalyzeRow {
+  id: string
+  bright?: number
+  std?: number
+  hash?: string
+}
+export async function analyze(ids: string[]): Promise<AnalyzeRow[]> {
+  if (readSettings().demo) return []
+  return agent.tryCall<AnalyzeRow[]>('analyze', { ids }, [], 180000)
+}
+
 export async function pair(): Promise<{ ok: boolean; message: string }> {
   if (readSettings().demo) return { ok: true, message: 'Modalità demo' }
   return agent.tryCall<{ ok: boolean; message: string }>(

@@ -1,11 +1,12 @@
 import { cn } from '../lib/cn'
 import { useDevice } from '../store/device'
 
-export type NavKey = 'home' | 'photos' | 'spazio' | 'settings'
+export type NavKey = 'home' | 'photos' | 'wizard' | 'spazio' | 'settings'
 
 const items: { k: NavKey; label: string }[] = [
   { k: 'home', label: 'Home' },
   { k: 'photos', label: 'Foto e video' },
+  { k: 'wizard', label: 'Wizard' },
   { k: 'spazio', label: 'Spazio' },
   { k: 'settings', label: 'Impostazioni' },
 ]

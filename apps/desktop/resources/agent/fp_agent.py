@@ -283,6 +283,28 @@ class Agent:
         im.convert('RGB').save(buf, 'JPEG', quality=72)
         return {'b64': base64.b64encode(buf.getvalue()).decode('ascii')}
 
+    async def analyze(self, ids):
+        # Per ogni foto: dHash percettivo (duplicati) + luminosità/varianza (foto nere/vuote).
+        afc = await self.afc()
+        from PIL import Image, ImageStat
+        out = []
+        for fid in ids:
+            try:
+                data = await aw(afc.get_file_contents('/DCIM/' + fid))
+                im = Image.open(io.BytesIO(data)).convert('L')
+                stat = ImageStat.Stat(im)
+                small = im.resize((9, 8))
+                px = list(small.getdata())
+                bits = 0
+                for row in range(8):
+                    base = row * 9
+                    for col in range(8):
+                        bits = (bits << 1) | (1 if px[base + col] > px[base + col + 1] else 0)
+                out.append({'id': fid, 'bright': round(stat.mean[0], 1), 'std': round(stat.stddev[0], 1), 'hash': '%016x' % bits})
+            except Exception:
+                out.append({'id': fid})
+        return out
+
     async def pair(self):
         udid = await self._first_udid()
         if not udid:
@@ -303,6 +325,8 @@ async def dispatch(agent, req):
         return await agent.listing(req.get('source', 'photos'))
     if cmd == 'browse':
         return await agent.browse(req.get('path', ''))
+    if cmd == 'analyze':
+        return await agent.analyze(req.get('ids', []))
     if cmd == 'pull':
         return await agent.pull(req['remote'], req['dest'])
     if cmd == 'rm':

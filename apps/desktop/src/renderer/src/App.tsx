@@ -5,6 +5,7 @@ import { Header } from './components/header'
 import { Sidebar, type NavKey } from './components/sidebar'
 import { Home } from './views/home'
 import { Photos } from './views/photos'
+import { Wizard } from './views/wizard'
 import { Spazio } from './views/spazio'
 import { Settings } from './views/settings'
 
@@ -27,6 +28,7 @@ export default function App() {
         <main className="min-w-0 flex-1 overflow-auto">
           {active === 'home' && <Home onNavigate={setActive} />}
           {active === 'photos' && <Photos />}
+          {active === 'wizard' && <Wizard />}
           {active === 'spazio' && <Spazio />}
           {active === 'settings' && <Settings />}
         </main>

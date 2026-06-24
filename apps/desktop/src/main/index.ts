@@ -2,7 +2,7 @@ import { app, BrowserWindow, nativeTheme, nativeImage, ipcMain, shell, protocol,
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { readSettings, writeSettings, type ThemeSource } from './settings'
-import { getState, listItems, browse, pair, thumb, capabilities } from './device/manager'
+import { getState, listItems, browse, analyze, pair, thumb, capabilities } from './device/manager'
 import { agent } from './device/agent'
 import { ensureOriginals } from './media/originals'
 import { installAppleDrivers, driversPresent } from './drivers/onboarding'
@@ -120,6 +120,7 @@ app.whenReady().then(() => {
   ipcMain.handle('device:status', () => getState())
   ipcMain.handle('device:list', (_e, source: SourceKey) => listItems(source))
   ipcMain.handle('device:browse', (_e, path: string) => browse(path))
+  ipcMain.handle('device:analyze', (_e, ids: string[]) => analyze(ids))
   ipcMain.handle('device:pair', () => pair())
   ipcMain.handle('media:thumb', (_e, source: SourceKey, id: string, size?: number) => thumb(source, id, size))
   ipcMain.handle('media:open', (_e, source: SourceKey, id: string) => openItem(source, id))
