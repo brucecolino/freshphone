@@ -4,6 +4,7 @@ import './globals.css'
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
 import { PromoBanner } from '@/components/promo-banner'
+import { getDict } from '@/i18n/get-dict'
 
 const display = Poppins({
   subsets: ['latin'],
@@ -34,15 +35,16 @@ export const metadata: Metadata = {
 
 const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { locale, t } = await getDict()
   return (
-    <html lang="it" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${display.variable} ${body.variable} font-sans antialiased`}>
         <PromoBanner />
-        <SiteNav />
+        <SiteNav nav={t.nav} locale={locale} />
         <main>{children}</main>
         <SiteFooter />
       </body>

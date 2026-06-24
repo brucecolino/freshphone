@@ -4,7 +4,28 @@ import { useState } from 'react'
 
 type State = 'idle' | 'loading' | 'done' | 'error'
 
-export function NewsletterForm() {
+export function NewsletterForm({ locale = 'it' }: { locale?: 'it' | 'en' }) {
+  const s =
+    locale === 'en'
+      ? {
+          email: 'Your email',
+          subscribe: 'Subscribe',
+          wait: 'Please wait…',
+          already: 'You are already subscribed.',
+          check: 'Check your email to confirm.',
+          err: 'Something went wrong.',
+          net: 'Network error. Try again.',
+        }
+      : {
+          email: 'La tua email',
+          subscribe: 'Iscriviti',
+          wait: 'Attendi…',
+          already: 'Sei già iscritto.',
+          check: 'Controlla la tua email per confermare.',
+          err: 'Si è verificato un errore.',
+          net: 'Errore di rete. Riprova.',
+        }
+
   const [email, setEmail] = useState('')
   const [state, setState] = useState<State>('idle')
   const [msg, setMsg] = useState('')
@@ -22,14 +43,14 @@ export function NewsletterForm() {
       const data = (await res.json()) as { ok?: boolean; already?: boolean; error?: string }
       if (!res.ok) {
         setState('error')
-        setMsg(data.error ?? 'Si è verificato un errore.')
+        setMsg(data.error ?? s.err)
         return
       }
       setState('done')
-      setMsg(data.already ? 'Sei già iscritto.' : 'Controlla la tua email per confermare.')
+      setMsg(data.already ? s.already : s.check)
     } catch {
       setState('error')
-      setMsg('Errore di rete. Riprova.')
+      setMsg(s.net)
     }
   }
 
@@ -44,7 +65,7 @@ export function NewsletterForm() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="La tua email"
+        placeholder={s.email}
         className="flex-1 rounded-full border border-line bg-bg px-4 py-2.5 text-sm outline-none focus:border-brand"
       />
       <button
@@ -52,7 +73,7 @@ export function NewsletterForm() {
         disabled={state === 'loading'}
         className="bg-grad rounded-full px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
       >
-        {state === 'loading' ? 'Attendi…' : 'Iscriviti'}
+        {state === 'loading' ? s.wait : s.subscribe}
       </button>
       {state === 'error' && <p className="text-sm text-ink2 sm:hidden">{msg}</p>}
     </form>

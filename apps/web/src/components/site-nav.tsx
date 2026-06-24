@@ -4,16 +4,18 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Logo } from './logo'
 import { ThemeToggle } from './theme-toggle'
+import { LanguageSwitcher } from './language-switcher'
+import type { Dict } from '@/i18n/dictionaries'
 
-const links = [
-  { href: '/#funzioni', label: 'Funzioni' },
-  { href: '/#come-funziona', label: 'Come funziona' },
-  { href: '/pricing', label: 'Prezzi' },
-  { href: '/#faq', label: 'FAQ' },
-]
-
-export function SiteNav() {
+export function SiteNav({ nav, locale }: { nav: Dict['nav']; locale: 'it' | 'en' }) {
   const [open, setOpen] = useState(false)
+
+  const links = [
+    { href: '/#funzioni', label: nav.features },
+    { href: '/#come-funziona', label: nav.how },
+    { href: '/pricing', label: nav.pricing },
+    { href: '/#faq', label: nav.faq },
+  ]
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-bg/80 backdrop-blur-md">
@@ -31,26 +33,28 @@ export function SiteNav() {
         </div>
 
         <div className="hidden items-center gap-2.5 md:flex">
+          <LanguageSwitcher locale={locale} />
           <ThemeToggle />
           <Link href="/account" className="px-2 text-sm text-ink2 transition-colors hover:text-ink">
-            Accedi
+            {nav.signin}
           </Link>
           <Link
             href="/download"
             className="bg-grad inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
           >
-            Scarica gratis
+            {nav.download}
           </Link>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
+          <LanguageSwitcher locale={locale} />
           <ThemeToggle />
           <button
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink"
           >
-            {open ? 'Chiudi' : 'Menu'}
+            {open ? (locale === 'it' ? 'Chiudi' : 'Close') : 'Menu'}
           </button>
         </div>
       </nav>
@@ -69,14 +73,14 @@ export function SiteNav() {
               </Link>
             ))}
             <Link href="/account" onClick={() => setOpen(false)} className="rounded-lg px-2 py-2.5 text-sm text-ink2 hover:bg-bg">
-              Accedi
+              {nav.signin}
             </Link>
             <Link
               href="/download"
               onClick={() => setOpen(false)}
               className="bg-grad mt-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold text-white"
             >
-              Scarica gratis
+              {nav.download}
             </Link>
           </div>
         </div>
