@@ -7,9 +7,41 @@ import { ensureOriginals } from './media/originals'
 import { installAppleDrivers } from './drivers/onboarding'
 import { exportSelection } from './transfer/export'
 import { removeSelection } from './transfer/remove'
+import { getLicenseStatus, activate, deactivate } from './license'
 import type { SourceKey } from './device/engine'
 
 let win: BrowserWindow | null = null
+
+// ===== Deep link freshphone://activate?key=... + istanza singola =====
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const url = argv.find((a) => a.startsWith('freshphone://'))
+    if (url) void handleDeepLink(url)
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+}
+app.setAsDefaultProtocolClient('freshphone')
+
+async function handleDeepLink(url: string): Promise<void> {
+  try {
+    const u = new URL(url)
+    if (u.host === 'activate') {
+      const key = u.searchParams.get('key')
+      if (key) {
+        await activate(key)
+        win?.webContents.send('license:changed', getLicenseStatus())
+      }
+    }
+  } catch {
+    /* URL non valido */
+  }
+}
 
 function resolvedTheme(): 'light' | 'dark' {
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
@@ -83,12 +115,20 @@ app.whenReady().then(() => {
     e.sender.startDrag({ files, file: files[0], icon })
   })
   ipcMain.handle('driver:install', () => installAppleDrivers())
+  ipcMain.handle('license:status', () => getLicenseStatus())
+  ipcMain.handle('license:activate', (_e, key: string) => activate(key))
+  ipcMain.handle('license:deactivate', () => {
+    deactivate()
+    return getLicenseStatus()
+  })
 
   nativeTheme.on('updated', () => {
     win?.webContents.send('theme:changed', { source: nativeTheme.themeSource, resolved: resolvedTheme() })
   })
 
   createWindow()
+  const initialUrl = process.argv.find((a) => a.startsWith('freshphone://'))
+  if (initialUrl) void handleDeepLink(initialUrl)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

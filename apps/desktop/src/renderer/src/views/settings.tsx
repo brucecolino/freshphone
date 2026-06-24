@@ -8,13 +8,26 @@ const modes = [
   { k: 'dark', label: 'Scuro' },
 ] as const
 
+interface Lic {
+  state: string
+  plan?: string
+  expiresAt?: string | null
+}
+
 export function Settings() {
   const source = useTheme((s) => s.source)
   const setSource = useTheme((s) => s.setSource)
   const [demo, setDemo] = useState(false)
 
+  const [lic, setLic] = useState<Lic>({ state: 'none' })
+  const [keyInput, setKeyInput] = useState('')
+  const [licMsg, setLicMsg] = useState<string | null>(null)
+  const [activating, setActivating] = useState(false)
+
   useEffect(() => {
     window.fp.settings.get().then((s) => setDemo(Boolean((s as { demo?: boolean }).demo)))
+    window.fp.license.status().then((s) => setLic(s))
+    return window.fp.license.onChanged((s) => setLic(s))
   }, [])
 
   async function toggleDemo(v: boolean) {
@@ -22,6 +35,31 @@ export function Settings() {
     await window.fp.settings.set({ demo: v })
     location.reload()
   }
+
+  async function doActivate() {
+    setActivating(true)
+    setLicMsg(null)
+    try {
+      const r = await window.fp.license.activate(keyInput)
+      setLicMsg(r.message)
+      setLic(await window.fp.license.status())
+      if (r.ok) setKeyInput('')
+    } finally {
+      setActivating(false)
+    }
+  }
+
+  async function doDeactivate() {
+    setLic(await window.fp.license.deactivate())
+    setLicMsg('Licenza rimossa')
+  }
+
+  const licLine =
+    lic.state === 'active'
+      ? `Attiva${lic.plan && lic.plan !== 'unknown' ? ` · piano ${lic.plan}` : ''}${lic.expiresAt ? ` · scade il ${new Date(lic.expiresAt).toLocaleDateString('it-IT')}` : ' · a vita'}`
+      : lic.state === 'expired'
+        ? 'Licenza scaduta'
+        : 'Nessuna licenza attiva'
 
   return (
     <div className="max-w-2xl p-6">
@@ -59,8 +97,31 @@ export function Settings() {
 
       <div className="mt-4 rounded-xl2 border border-line bg-surface p-5">
         <h2 className="font-display font-semibold">Licenza</h2>
-        <p className="mt-2 text-sm text-ink2">
-          Attivazione licenza (deep link e inserimento manuale della key) in arrivo, collegata al tuo account sul sito.
+        <p className="mt-2 text-sm text-ink2">{licLine}</p>
+        {lic.state === 'active' ? (
+          <button onClick={doDeactivate} className="mt-3 rounded-lg border border-line px-4 py-2 text-sm hover:bg-bg">
+            Disattiva
+          </button>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              placeholder="FP-XXXX-XXXX-XXXX-XXXX"
+              className="w-full max-w-xs rounded-lg border border-line bg-bg px-3 py-2 text-sm uppercase outline-none focus:border-brand"
+            />
+            <button
+              onClick={doActivate}
+              disabled={activating}
+              className="bg-grad rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {activating ? 'Attivo…' : 'Attiva'}
+            </button>
+          </div>
+        )}
+        {licMsg && <p className="mt-2 text-xs text-ink2">{licMsg}</p>}
+        <p className="mt-3 text-xs text-ink2">
+          Puoi anche attivare con un clic dall’area personale sul sito (link <code>freshphone://</code>).
         </p>
       </div>
 

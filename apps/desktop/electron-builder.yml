@@ -1,0 +1,37 @@
+appId: app.freshphone.desktop
+productName: FreshPhone
+copyright: © 2026 FreshPhone
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+
+# I binari del dispositivo (libimobiledevice / pymobiledevice3 / ffmpeg) vanno in
+# resources/bin e vengono inclusi nell'installer.
+extraResources:
+  - from: resources/bin
+    to: bin
+    filter:
+      - '**/*'
+
+win:
+  target: nsis
+  icon: build/icon.png
+  artifactName: FreshPhone-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: FreshPhone
+
+# Registra il protocollo freshphone:// all'installazione (attivazione licenza da web).
+protocols:
+  - name: FreshPhone
+    schemes:
+      - freshphone

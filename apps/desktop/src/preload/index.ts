@@ -46,6 +46,17 @@ const api = {
       ipcRenderer.invoke('transfer:remove', source, ids),
     startDrag: (source: string, ids: string[]): void => ipcRenderer.send('transfer:startDrag', source, ids),
   },
+  license: {
+    status: (): Promise<{ state: string; key?: string; plan?: string; expiresAt?: string | null }> =>
+      ipcRenderer.invoke('license:status'),
+    activate: (key: string): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke('license:activate', key),
+    deactivate: (): Promise<{ state: string }> => ipcRenderer.invoke('license:deactivate'),
+    onChanged: (cb: (s: { state: string; plan?: string; expiresAt?: string | null }) => void): (() => void) => {
+      const handler = (_e: unknown, s: { state: string; plan?: string; expiresAt?: string | null }): void => cb(s)
+      ipcRenderer.on('license:changed', handler)
+      return () => ipcRenderer.removeListener('license:changed', handler)
+    },
+  },
 }
 
 if (process.contextIsolated) {

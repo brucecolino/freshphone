@@ -4,12 +4,23 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 
 export type ThemeSource = 'system' | 'light' | 'dark'
 
+export interface StoredLicense {
+  key: string
+  plan: string
+  expiresAt: string | null
+  token?: string
+}
+
 export interface Settings {
   theme: ThemeSource
   exportDir?: string
   language?: string
   /** Modalità demo: usa dati di esempio anche senza iPhone collegato. */
   demo?: boolean
+  /** Identificativo macchina stabile (per il limite di postazioni licenza). */
+  machineId?: string
+  /** Licenza attivata. */
+  license?: StoredLicense
 }
 
 const defaults: Settings = { theme: 'system', language: 'it', demo: false }

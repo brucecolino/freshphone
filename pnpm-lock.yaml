@@ -9,19 +9,6 @@ importers:
   .: {}
 
   apps/desktop:
-    dependencies:
-      '@freshphone/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      react:
-        specifier: ^19.0.0
-        version: 19.2.7
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.7(react@19.2.7)
-      zustand:
-        specifier: ^5.0.2
-        version: 5.0.14(@types/react@19.2.17)(react@19.2.7)
     devDependencies:
       '@types/node':
         specifier: ^22.10.5
@@ -50,6 +37,12 @@ importers:
       postcss:
         specifier: ^8.5.1
         version: 8.5.15
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.19
@@ -59,6 +52,9 @@ importers:
       vite:
         specifier: ^6.0.0
         version: 6.4.3(@types/node@22.20.0)(jiti@1.21.7)
+      zustand:
+        specifier: ^5.0.2
+        version: 5.0.14(@types/react@19.2.17)(react@19.2.7)
 
   apps/web:
     dependencies:
