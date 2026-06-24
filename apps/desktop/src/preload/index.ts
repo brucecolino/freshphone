@@ -26,6 +26,12 @@ const api = {
     list: (source: string): Promise<unknown[]> => ipcRenderer.invoke('device:list', source),
     pair: (): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke('device:pair'),
   },
+  media: {
+    thumb: (source: string, id: string): Promise<string | null> => ipcRenderer.invoke('media:thumb', source, id),
+  },
+  driver: {
+    install: (): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke('driver:install'),
+  },
 }
 
 if (process.contextIsolated) {

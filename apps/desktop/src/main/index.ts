@@ -1,7 +1,8 @@
 import { app, BrowserWindow, nativeTheme, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { readSettings, writeSettings, type ThemeSource } from './settings'
-import { getState, listItems, pair } from './device/manager'
+import { getState, listItems, pair, thumb } from './device/manager'
+import { installAppleDrivers } from './drivers/onboarding'
 import type { SourceKey } from './device/engine'
 
 let win: BrowserWindow | null = null
@@ -62,6 +63,8 @@ app.whenReady().then(() => {
   ipcMain.handle('device:status', () => getState())
   ipcMain.handle('device:list', (_e, source: SourceKey) => listItems(source))
   ipcMain.handle('device:pair', () => pair())
+  ipcMain.handle('media:thumb', (_e, source: SourceKey, id: string) => thumb(source, id))
+  ipcMain.handle('driver:install', () => installAppleDrivers())
 
   nativeTheme.on('updated', () => {
     win?.webContents.send('theme:changed', { source: nativeTheme.themeSource, resolved: resolvedTheme() })

@@ -1,6 +1,7 @@
 import { readSettings } from '../settings'
 import { mockEngine } from './mock'
 import { probe, afcList, pairDevice } from './libimobiledevice'
+import { getThumb } from '../media/thumbs'
 import type { MediaItem, SourceKey } from './engine'
 
 export interface DeviceState {
@@ -53,4 +54,11 @@ export async function pair(): Promise<{ ok: boolean; message: string }> {
   const p = await probe()
   if (!p.udid) return { ok: false, message: 'Nessun dispositivo collegato' }
   return pairDevice(p.udid)
+}
+
+export async function thumb(source: SourceKey, id: string): Promise<string | null> {
+  if (readSettings().demo) return null
+  const p = await probe()
+  if (!p.connected || !p.trusted || !p.udid) return null
+  return getThumb(p.udid, source, id)
 }

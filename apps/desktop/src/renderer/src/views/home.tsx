@@ -20,6 +20,7 @@ function Banner({ children }: { children: ReactNode }) {
 export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
   const [status, setStatus] = useState<DeviceStatus | null>(null)
   const [pairing, setPairing] = useState(false)
+  const [driverMsg, setDriverMsg] = useState<string | null>(null)
 
   const load = useCallback(() => {
     window.fp.device.status().then((s) => setStatus(s as DeviceStatus))
@@ -38,6 +39,11 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
     }
   }
 
+  async function installDriver() {
+    const r = await window.fp.driver.install()
+    setDriverMsg(r.message)
+  }
+
   const free = status?.usedBytes && status?.totalBytes ? status.totalBytes - status.usedBytes : undefined
   const ready = status?.mode === 'demo' || (status?.connected === true && status?.trusted === true)
 
@@ -54,12 +60,24 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
 
       {status?.mode === 'none' && status.toolsOk === false && (
         <Banner>
-          Strumenti dispositivo non trovati. Inserisci i binari libimobiledevice in <code>resources/bin</code> (vedi il
-          README) e installa l’Apple Mobile Device Driver. In alternativa attiva la modalità demo in Impostazioni.
+          <p>
+            Strumenti dispositivo non trovati. Inserisci i binari libimobiledevice in <code>resources/bin</code> (vedi
+            il README). Serve anche il driver Apple. In alternativa attiva la modalità demo in Impostazioni.
+          </p>
+          <button onClick={installDriver} className="mt-3 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-bg">
+            Installa driver Apple
+          </button>
+          {driverMsg && <p className="mt-2 text-xs text-ink2">{driverMsg}</p>}
         </Banner>
       )}
       {status?.mode === 'none' && status.toolsOk !== false && (
-        <Banner>Collega il tuo iPhone al PC con un cavo USB.</Banner>
+        <Banner>
+          <p>Collega il tuo iPhone al PC con un cavo USB. Se non viene rilevato, installa il driver Apple.</p>
+          <button onClick={installDriver} className="mt-3 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-bg">
+            Installa driver Apple
+          </button>
+          {driverMsg && <p className="mt-2 text-xs text-ink2">{driverMsg}</p>}
+        </Banner>
       )}
       {status?.connected && !status.trusted && (
         <Banner>

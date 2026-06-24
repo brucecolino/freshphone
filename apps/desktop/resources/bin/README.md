@@ -23,6 +23,13 @@ Puoi ottenerlo come eseguibile "frozen" (PyInstaller) oppure installarlo con
 `pip install pymobiledevice3` e puntare FreshPhone all'eseguibile via variabile
 d'ambiente (vedi sotto).
 
+## Anteprime (HEIC/video) — ffmpeg (opzionale)
+
+Le anteprime di JPEG/PNG sono generate da Electron senza dipendenze. Per **HEIC/HEIF** e i
+**video** serve `ffmpeg.exe` in questa cartella (o su PATH). Senza ffmpeg, gli elementi
+HEIC/video mostrano un riquadro colorato al posto della miniatura. Override:
+`FRESHPHONE_FFMPEG`.
+
 ## Driver Apple
 
 Su Windows serve l'**Apple Mobile Device USB Driver** (incluso nell'app "Apple Devices"

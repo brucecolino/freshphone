@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
 import type { MediaItem } from '../types'
 
@@ -9,6 +9,70 @@ const palette = [
 const fmtSize = (b: number) =>
   b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${(b / 1e3).toFixed(0)} KB`
 const fmtDur = (s?: number) => (s == null ? '' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`)
+
+function AssetTile({
+  item,
+  color,
+  selected,
+  onClick,
+}: {
+  item: MediaItem
+  color: string
+  selected: boolean
+  onClick: () => void
+}) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const [src, setSrc] = useState<string | null>(null)
+  const [tried, setTried] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || tried) return
+    let cancelled = false
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            io.disconnect()
+            setTried(true)
+            window.fp.media
+              .thumb('photos', item.id)
+              .then((s) => {
+                if (!cancelled) setSrc(s as string | null)
+              })
+              .catch(() => undefined)
+          }
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    io.observe(el)
+    return () => {
+      cancelled = true
+      io.disconnect()
+    }
+  }, [item.id, tried])
+
+  return (
+    <button
+      ref={ref}
+      onClick={onClick}
+      title={`${item.name}${item.sizeBytes ? ` · ${fmtSize(item.sizeBytes)}` : ''}`}
+      className={cn(
+        'relative aspect-square overflow-hidden rounded-md',
+        selected && 'ring-2 ring-brand ring-offset-2 ring-offset-bg',
+      )}
+      style={src ? undefined : { background: color }}
+    >
+      {src && <img src={src} alt="" className="h-full w-full object-cover" />}
+      {item.type === 'video' && (
+        <span className="absolute bottom-1 right-1 rounded bg-black/55 px-1 text-[10px] text-white">
+          {fmtDur(item.durationSec)}
+        </span>
+      )}
+    </button>
+  )
+}
 
 type SortKey = 'date' | 'size' | 'name'
 type Filter = 'all' | 'photo' | 'video'
@@ -102,20 +166,13 @@ export function Photos() {
       <div className="flex-1 overflow-auto p-4">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
           {view.map((it, i) => (
-            <button
+            <AssetTile
               key={it.id}
+              item={it}
+              color={palette[i % palette.length]}
+              selected={sel.has(it.id)}
               onClick={() => toggle(it.id)}
-              title={`${it.name} · ${fmtSize(it.sizeBytes)}`}
-              className={cn(
-                'relative aspect-square overflow-hidden rounded-md',
-                sel.has(it.id) && 'ring-2 ring-brand ring-offset-2 ring-offset-bg',
-              )}
-              style={{ background: palette[i % palette.length] }}
-            >
-              {it.type === 'video' && (
-                <span className="absolute bottom-1 right-1 rounded bg-black/55 px-1 text-[10px] text-white">{fmtDur(it.durationSec)}</span>
-              )}
-            </button>
+            />
           ))}
         </div>
         {view.length === 0 && (
