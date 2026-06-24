@@ -58,6 +58,20 @@ async def aw(x):
 PHOTO_EXT = {'heic', 'heif', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'dng', 'tiff'}
 VIDEO_EXT = {'mov', 'mp4', 'm4v', 'avi'}
 
+# File "personali" mostrati nella sezione File (documenti, audio, immagini salvate…).
+PERSONAL_EXT = {
+    'pdf', 'doc', 'docx', 'txt', 'rtf', 'epub', 'pages', 'key', 'numbers', 'mobi', 'md',
+    'csv', 'xls', 'xlsx', 'ppt', 'pptx', 'json', 'xml', 'html', 'zip', 'rar', '7z',
+    'mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg', 'aiff',
+    'jpg', 'jpeg', 'png', 'gif', 'heic', 'webp', 'bmp', 'tiff',
+}
+# Cartelle di sistema da nascondere nella sezione File.
+SKIP_DIRS = {
+    'PhotoData', 'iTunes_Control', 'DCIM', 'Photos', '.MISC', 'MediaAnalysis',
+    'com.apple.itunes.lock_sync', 'Purchases', 'Radio', 'ApplicationArchives',
+    'Safari', 'Logs', 'Keyboard', 'Sounds', 'Recordings',
+}
+
 
 def ftype(name):
     ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
@@ -175,28 +189,42 @@ class Agent:
                         'kind': 'video' if t == 'video' else f.rsplit('.', 1)[-1].upper(),
                     })
         else:
-            # Sezione File: contenuto della media partition (cartelle + file sparsi).
-            base = '/'
+            return await self.personal_files()
+        return items
+
+    async def personal_files(self):
+        afc = await self.afc()
+        items = []
+
+        async def walk(path, depth):
+            if depth > 4:
+                return
             try:
-                names = await aw(afc.listdir(base))
+                names = await aw(afc.listdir(path))
             except Exception:
-                names = []
+                return
             for n in names:
-                if n in ('.', '..'):
+                if n in ('.', '..') or n.startswith('.'):
                     continue
-                size, date, is_dir = 0, '', False
+                full = path.rstrip('/') + '/' + n
                 try:
-                    st = await aw(afc.stat(base + n))
-                    is_dir = st.get('st_ifmt') == 'S_IFDIR'
-                    size = st.get('st_size', 0)
-                    date = self._date(st)
+                    st = await aw(afc.stat(full))
                 except Exception:
-                    pass
-                items.append({
-                    'id': n, 'name': n, 'type': 'folder' if is_dir else 'file', 'isDir': is_dir,
-                    'sizeBytes': size, 'date': date,
-                    'kind': 'cartella' if is_dir else (n.rsplit('.', 1)[-1].upper() if '.' in n else ''),
-                })
+                    continue
+                if st.get('st_ifmt') == 'S_IFDIR':
+                    if n in SKIP_DIRS:
+                        continue
+                    await walk(full, depth + 1)
+                else:
+                    ext = n.rsplit('.', 1)[-1].lower() if '.' in n else ''
+                    if ext in PERSONAL_EXT:
+                        items.append({
+                            'id': full.lstrip('/'), 'name': n, 'type': ftype(n),
+                            'sizeBytes': st.get('st_size', 0), 'date': self._date(st),
+                            'kind': ext.upper(),
+                        })
+
+        await walk('/', 0)
         return items
 
     async def browse(self, path):
