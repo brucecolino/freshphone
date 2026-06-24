@@ -40,6 +40,10 @@ const api = {
     status: (): Promise<{ present: boolean }> => ipcRenderer.invoke('driver:status'),
     install: (): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke('driver:install'),
   },
+  log: {
+    get: (): Promise<string> => ipcRenderer.invoke('log:get'),
+    open: (): Promise<void> => ipcRenderer.invoke('log:open'),
+  },
   transfer: {
     export: (
       source: string,

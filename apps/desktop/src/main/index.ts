@@ -11,6 +11,7 @@ import { removeSelection } from './transfer/remove'
 import { moveSelection } from './transfer/move'
 import { openItem } from './media/open'
 import { viewerDir, localMediaUrl } from './media/viewer'
+import { getLog, openLogFile } from './log'
 import { getLicenseStatus, activate, deactivate } from './license'
 import type { SourceKey } from './device/engine'
 
@@ -124,6 +125,8 @@ app.whenReady().then(() => {
   ipcMain.handle('media:open', (_e, source: SourceKey, id: string) => openItem(source, id))
   ipcMain.handle('media:localFile', (_e, source: SourceKey, id: string) => localMediaUrl(source, id))
   ipcMain.handle('media:capabilities', () => capabilities())
+  ipcMain.handle('log:get', () => getLog())
+  ipcMain.handle('log:open', () => openLogFile())
   ipcMain.handle('transfer:export', (_e, source: SourceKey, ids: string[]) => exportSelection(source, ids))
   ipcMain.handle('transfer:remove', (_e, source: SourceKey, ids: string[]) => removeSelection(source, ids))
   ipcMain.handle('transfer:move', (_e, source: SourceKey, ids: string[]) => moveSelection(source, ids))

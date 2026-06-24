@@ -1,5 +1,6 @@
 export interface DeviceStatus {
   mode?: 'demo' | 'device' | 'none'
+  state?: 'demo' | 'connected' | 'untrusted' | 'searching' | 'error'
   toolsOk?: boolean
   connected: boolean
   trusted?: boolean

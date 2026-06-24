@@ -1,5 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import { cn } from '../lib/cn'
 import { useDevice } from '../store/device'
+import { LinkIcon, SearchIcon, AlertIcon } from '../components/icons'
 import type { NavKey } from '../components/sidebar'
 
 const gb = (b?: number) => `${((b ?? 0) / 1_000_000_000).toFixed(1)} GB`
@@ -13,15 +15,49 @@ function Card({ label, value }: { label: string; value: string }) {
   )
 }
 
-function Banner({ children }: { children: ReactNode }) {
-  return <div className="mt-4 rounded-xl2 border border-line bg-grad-soft p-4 text-sm">{children}</div>
+function LogModal({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState('Caricamento…')
+  useEffect(() => {
+    let alive = true
+    window.fp.log.get().then((t) => {
+      if (alive) setText(t)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
+      <div className="flex max-h-full w-full max-w-2xl flex-col rounded-xl2 border border-line bg-surface p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display font-semibold">Log diagnostico</h2>
+          <div className="flex gap-2">
+            <button onClick={() => navigator.clipboard.writeText(text)} className="rounded-lg border border-line px-3 py-1 text-sm hover:bg-bg">
+              Copia
+            </button>
+            <button onClick={() => window.fp.log.open()} className="rounded-lg border border-line px-3 py-1 text-sm hover:bg-bg">
+              Apri file
+            </button>
+            <button onClick={onClose} className="rounded-lg border border-line px-3 py-1 text-sm hover:bg-bg">
+              Chiudi
+            </button>
+          </div>
+        </div>
+        <pre className="mt-3 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg bg-bg p-3 text-xs text-ink2">{text}</pre>
+      </div>
+    </div>
+  )
 }
 
 export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
   const status = useDevice((s) => s.status)
   const refresh = useDevice((s) => s.refresh)
   const [pairing, setPairing] = useState(false)
-  const [driverMsg, setDriverMsg] = useState<string | null>(null)
+  const [showLog, setShowLog] = useState(false)
+
+  const state = status?.state ?? 'searching'
+  const free = status?.usedBytes && status?.totalBytes ? status.totalBytes - status.usedBytes : undefined
+  const ready = state === 'demo' || state === 'connected'
 
   async function authorize() {
     setPairing(true)
@@ -33,65 +69,37 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
     }
   }
 
-  async function installDriver() {
-    const r = await window.fp.driver.install()
-    setDriverMsg(r.message)
-  }
-
-  const free = status?.usedBytes && status?.totalBytes ? status.totalBytes - status.usedBytes : undefined
-  const ready = status?.mode === 'demo' || (status?.connected === true && status?.trusted === true)
+  const ui = {
+    demo: { icon: <LinkIcon />, color: 'text-brand', title: 'Modalità demo', sub: 'Dati di esempio, senza iPhone' },
+    connected: { icon: <LinkIcon />, color: 'text-brand', title: `${status?.name ?? 'iPhone'} collegato`, sub: 'Pronto all’uso' },
+    untrusted: { icon: <AlertIcon />, color: 'text-amber-500', title: 'Autorizza l’iPhone', sub: 'Sblocca il telefono e tocca “Autorizza”' },
+    searching: { icon: <SearchIcon />, color: 'text-ink2', title: 'Ricerca iPhone in corso…', sub: 'Collega l’iPhone con un cavo e sbloccalo' },
+    error: { icon: <AlertIcon />, color: 'text-red-500', title: 'Problema di connessione', sub: 'Riprova a ricollegare l’iPhone. Se continua, apri il log.' },
+  }[state]
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold">Home</h1>
-      <p className="mt-1 text-sm text-ink2">
-        {status?.mode === 'demo'
-          ? 'Modalità demo'
-          : status?.connected
-            ? `${status.name ?? 'iPhone'} collegato`
-            : 'Nessun iPhone collegato — ricerca in corso…'}
-      </p>
 
-      {status?.mode === 'none' && status.toolsOk === false && (
-        <Banner>
-          <p className="font-medium">Strumenti dispositivo non trovati</p>
-          <p className="mt-1 text-ink2">
-            Manca <code>pymobiledevice3</code> in <code>resources/bin</code>. Reinstalla FreshPhone, oppure attiva la
-            modalità demo in Impostazioni per provare l’interfaccia.
-          </p>
-        </Banner>
-      )}
-
-      {status?.mode === 'none' && status.toolsOk !== false && (
-        <Banner>
-          <p className="font-medium">Sto cercando l’iPhone…</p>
-          <p className="mt-1 text-ink2">
-            Collegalo con un <strong>cavo dati</strong> (preferibilmente quello originale Apple, non un cavo solo
-            ricarica), direttamente a una porta USB del PC. Poi <strong>sblocca</strong> il telefono e, alla richiesta,
-            tocca <strong>Autorizza</strong>. Il collegamento viene rilevato in automatico.
-          </p>
-          <button
-            onClick={installDriver}
-            className="mt-3 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-bg"
-          >
-            Reinstalla driver Apple
-          </button>
-          {driverMsg && <p className="mt-2 text-xs text-ink2">{driverMsg}</p>}
-        </Banner>
-      )}
-
-      {status?.connected && !status.trusted && (
-        <Banner>
-          <span>iPhone collegato. Sblocca il telefono e tocca “Autorizza”, poi premi qui.</span>
-          <button
-            onClick={authorize}
-            disabled={pairing}
-            className="bg-grad ml-3 rounded-full px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-          >
+      <div className="mt-4 flex items-center gap-3 rounded-xl2 border border-line bg-surface p-4">
+        <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg', ui.color, state === 'searching' && 'animate-pulse')}>
+          {ui.icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{ui.title}</p>
+          <p className="truncate text-sm text-ink2">{ui.sub}</p>
+        </div>
+        {state === 'untrusted' && (
+          <button onClick={authorize} disabled={pairing} className="bg-grad shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60">
             {pairing ? 'Attendo…' : 'Autorizza'}
           </button>
-        </Banner>
-      )}
+        )}
+        {state === 'error' && (
+          <button onClick={() => setShowLog(true)} className="shrink-0 rounded-full border border-line px-4 py-1.5 text-xs font-semibold hover:bg-bg">
+            Apri log
+          </button>
+        )}
+      </div>
 
       {ready && (
         <>
@@ -100,13 +108,9 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
             <Card label="Spazio libero" value={gb(free)} />
             <Card label="Capacità" value={gb(status?.totalBytes)} />
           </div>
-
           <div className="mt-6 flex flex-wrap gap-3">
             <button onClick={() => onNavigate('photos')} className="bg-grad rounded-full px-5 py-2.5 text-sm font-semibold text-white">
               Sfoglia foto e video
-            </button>
-            <button onClick={() => onNavigate('files')} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface">
-              Sfoglia file
             </button>
             <button onClick={() => onNavigate('spazio')} className="rounded-full border border-line px-5 py-2.5 text-sm font-semibold hover:bg-surface">
               Libera spazio
@@ -114,6 +118,8 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
           </div>
         </>
       )}
+
+      {showLog && <LogModal onClose={() => setShowLog(false)} />}
     </div>
   )
 }

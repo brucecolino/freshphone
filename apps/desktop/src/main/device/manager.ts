@@ -4,11 +4,15 @@ import { agent } from './agent'
 import { getThumb } from '../media/thumbs'
 import { run } from './runner'
 import { toolPath } from './tools'
+import { logLine } from '../log'
 import type { MediaItem, SourceKey } from './engine'
+
+export type DeviceStateKind = 'demo' | 'connected' | 'untrusted' | 'searching' | 'error'
 
 export interface DeviceState {
   /** demo = dati di esempio; device = iPhone reale; none = nessun device/strumenti */
   mode: 'demo' | 'device' | 'none'
+  state: DeviceStateKind
   toolsOk: boolean
   connected: boolean
   trusted: boolean
@@ -30,14 +34,18 @@ interface AgentStatus {
 export async function getState(): Promise<DeviceState> {
   if (readSettings().demo) {
     const s = await mockEngine.getStatus()
-    return { mode: 'demo', toolsOk: true, connected: true, trusted: true, name: s.name, usedBytes: s.usedBytes, totalBytes: s.totalBytes }
+    return { mode: 'demo', state: 'demo', toolsOk: true, connected: true, trusted: true, name: s.name, usedBytes: s.usedBytes, totalBytes: s.totalBytes }
   }
 
   const s = await agent.tryCall<AgentStatus | null>('status', {}, null, 15000)
-  if (!s) return { mode: 'none', toolsOk: false, connected: false, trusted: false } // agent non avviabile
-  if (!s.connected) return { mode: 'none', toolsOk: true, connected: false, trusted: false }
+  if (!s) {
+    logLine('device: stato non disponibile (motore device non raggiungibile)')
+    return { mode: 'none', state: 'error', toolsOk: false, connected: false, trusted: false }
+  }
+  if (!s.connected) return { mode: 'none', state: 'searching', toolsOk: true, connected: false, trusted: false }
   return {
     mode: 'device',
+    state: s.trusted ? 'connected' : 'untrusted',
     toolsOk: true,
     connected: true,
     trusted: s.trusted,

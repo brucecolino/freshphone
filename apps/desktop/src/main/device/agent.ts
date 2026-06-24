@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { app } from 'electron'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
+import { logLine } from '../log'
 
 // Client del processo helper Python persistente (resources/agent/fp_agent.py).
 // Una sola sessione pymobiledevice3 viva: niente avvio di Python per chiamata
@@ -49,13 +50,15 @@ class DeviceAgent {
       const p = spawn(c.cmd, [...c.args, String(process.pid)], { windowsHide: true }) as ChildProcessWithoutNullStreams
       p.stdout.setEncoding('utf8')
       p.stdout.on('data', (d: string) => this.onData(d))
-      p.stderr.on('data', () => {
-        /* log/avvisi di pymobiledevice3: ignorati */
+      p.stderr.on('data', (d) => logLine('agent: ' + String(d).trim()))
+      p.on('exit', (code) => {
+        this.cleanup()
+        if (code) logLine('agent: terminato con codice ' + code)
       })
-      p.on('exit', () => this.cleanup())
-      p.on('error', () => {
+      p.on('error', (e) => {
         this.cleanup()
         this.failedAt = Date.now()
+        logLine('agent: errore di avvio: ' + (e as Error).message)
       })
       this.proc = p
       return true
