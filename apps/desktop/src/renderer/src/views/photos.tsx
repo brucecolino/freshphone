@@ -266,6 +266,7 @@ export function Photos() {
   const [filter, setFilter] = useState<Filter>('all')
   const [byMonth, setByMonth] = useState(false)
   const [sel, setSel] = useState<Set<string>>(new Set())
+  const [selecting, setSelecting] = useState(false)
   const [anchor, setAnchor] = useState<number | null>(null)
   const dragRef = useRef<{ active: boolean; start: number; base: Set<string>; moved: boolean } | null>(null)
   const [zoom, setZoom] = useState(2)
@@ -390,6 +391,7 @@ export function Photos() {
   // premere e trascinare sulle foto seleziona quelle che si attraversano.
   function tileMouseDown(e: React.MouseEvent, index: number, id: string) {
     if (e.button !== 0) return
+    if (!selecting) return // fuori dalla modalità selezione lasciamo il drag-and-drop nativo
     if (e.shiftKey && anchor != null) {
       const [a, b] = [Math.min(anchor, index), Math.max(anchor, index)]
       const range = view.slice(a, b + 1).map((it) => it.id)
@@ -472,10 +474,10 @@ export function Photos() {
       { label: 'Apri', disabled: oneIdx < 0, run: () => oneIdx >= 0 && setViewerIdx(oneIdx) },
       { label: 'Proprietà', disabled: !one, run: () => one && setPropsItem(view.find((it) => it.id === one) ?? null) },
       { sep: true },
-      { label: `Esporta in cartella… (${ids.length})`, run: () => doExport(ids) },
-      { label: `Sposta nel PC… (${ids.length})`, run: () => doMove(ids) },
+      { label: 'Esporta in cartella', run: () => doExport(ids) },
+      { label: 'Sposta nel PC', run: () => doMove(ids) },
       { sep: true },
-      { label: `Elimina dall'iPhone (${ids.length})`, danger: true, run: () => doRemove(ids) },
+      { label: "Elimina dall'iPhone", danger: true, run: () => doRemove(ids) },
     ] as { label?: string; sep?: boolean; danger?: boolean; disabled?: boolean; run?: () => void }[]
   })()
 
@@ -486,25 +488,31 @@ export function Photos() {
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold leading-tight">Foto e video</h1>
             <p className="text-xs text-ink2">
-              {loading ? 'Caricamento libreria…' : `${view.length} elementi`}
-              {sel.size > 0 ? ` · ${sel.size} selezionati` : ''}
+              {selecting ? `${sel.size} selezionati` : loading ? 'Caricamento libreria…' : `${view.length} elementi`}
             </p>
           </div>
-          {sel.size > 0 && (
-            <div className="flex items-center gap-2">
-              <button onClick={() => doExport(selIds())} disabled={busy} className="bg-grad h-8 rounded-lg px-3 text-xs font-semibold text-white disabled:opacity-60">
+          {selecting ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button onClick={selectAll} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg">
+                Seleziona tutto
+              </button>
+              <button onClick={() => doExport(selIds())} disabled={busy || sel.size === 0} className="bg-grad h-8 rounded-lg px-3 text-xs font-semibold text-white disabled:opacity-50">
                 Esporta
               </button>
-              <button onClick={() => doMove(selIds())} disabled={busy} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg disabled:opacity-60">
+              <button onClick={() => doMove(selIds())} disabled={busy || sel.size === 0} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg disabled:opacity-50">
                 Sposta
               </button>
-              <button onClick={() => doRemove(selIds())} disabled={busy} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg disabled:opacity-60">
+              <button onClick={() => doRemove(selIds())} disabled={busy || sel.size === 0} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg disabled:opacity-50">
                 Elimina
               </button>
-              <button onClick={clearSel} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg">
-                Deseleziona
+              <button onClick={() => { setSelecting(false); clearSel() }} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg">
+                Fine
               </button>
             </div>
+          ) : (
+            <button onClick={() => setSelecting(true)} className="h-8 shrink-0 rounded-lg bg-pill px-4 text-xs font-semibold text-pillt transition hover:opacity-90">
+              Seleziona
+            </button>
           )}
         </div>
 
@@ -547,11 +555,6 @@ export function Photos() {
               ))}
             </select>
 
-            {sel.size === 0 && (
-              <button onClick={selectAll} disabled={view.length === 0} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg disabled:opacity-50">
-                Seleziona tutto
-              </button>
-            )}
           </div>
         </div>
         {msg && <p className="mt-2 text-xs text-ink2">{msg}</p>}
@@ -575,11 +578,13 @@ export function Photos() {
                       key={item.id}
                       item={item}
                       selected={sel.has(item.id)}
-                      draggable={sel.has(item.id)}
+                      draggable={!selecting}
                       onMouseDown={(e) => tileMouseDown(e, index, item.id)}
                       onMouseEnter={() => tileMouseEnter(index)}
                       onContextMenu={(e) => contextTile(e, index, item.id)}
-                      onDoubleClick={() => setViewerIdx(index)}
+                      onDoubleClick={() => {
+                        if (!selecting) setViewerIdx(index)
+                      }}
                       onDragStart={() => tileDragStart(item.id)}
                     />
                   ))}

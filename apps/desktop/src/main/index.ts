@@ -129,8 +129,6 @@ app.whenReady().then(() => {
   ipcMain.handle('transfer:move', (_e, source: SourceKey, ids: string[]) => moveSelection(source, ids))
   ipcMain.on('transfer:startDrag', async (e, source: SourceKey, ids: string[]) => {
     if (readSettings().demo) return
-    const st = await getState()
-    if (!st.connected || !st.trusted) return
     const files = await ensureOriginals(source, ids)
     if (files.length === 0) return
     const icon = nativeImage.createFromDataURL(
