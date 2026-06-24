@@ -7,6 +7,8 @@ import { ensureOriginals } from './media/originals'
 import { installAppleDrivers, driversPresent } from './drivers/onboarding'
 import { exportSelection } from './transfer/export'
 import { removeSelection } from './transfer/remove'
+import { moveSelection } from './transfer/move'
+import { openItem } from './media/open'
 import { getLicenseStatus, activate, deactivate } from './license'
 import type { SourceKey } from './device/engine'
 
@@ -100,10 +102,12 @@ app.whenReady().then(() => {
   ipcMain.handle('device:status', () => getState())
   ipcMain.handle('device:list', (_e, source: SourceKey) => listItems(source))
   ipcMain.handle('device:pair', () => pair())
-  ipcMain.handle('media:thumb', (_e, source: SourceKey, id: string) => thumb(source, id))
+  ipcMain.handle('media:thumb', (_e, source: SourceKey, id: string, size?: number) => thumb(source, id, size))
+  ipcMain.handle('media:open', (_e, source: SourceKey, id: string) => openItem(source, id))
   ipcMain.handle('media:capabilities', () => capabilities())
   ipcMain.handle('transfer:export', (_e, source: SourceKey, ids: string[]) => exportSelection(source, ids))
   ipcMain.handle('transfer:remove', (_e, source: SourceKey, ids: string[]) => removeSelection(source, ids))
+  ipcMain.handle('transfer:move', (_e, source: SourceKey, ids: string[]) => moveSelection(source, ids))
   ipcMain.on('transfer:startDrag', async (e, source: SourceKey, ids: string[]) => {
     if (readSettings().demo) return
     const st = await getState()

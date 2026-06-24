@@ -27,7 +27,10 @@ const api = {
     pair: (): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke('device:pair'),
   },
   media: {
-    thumb: (source: string, id: string): Promise<string | null> => ipcRenderer.invoke('media:thumb', source, id),
+    thumb: (source: string, id: string, size?: number): Promise<string | null> =>
+      ipcRenderer.invoke('media:thumb', source, id, size),
+    open: (source: string, id: string): Promise<{ ok: boolean; message?: string }> =>
+      ipcRenderer.invoke('media:open', source, id),
     capabilities: (): Promise<{ afc: boolean; ffmpeg: boolean }> => ipcRenderer.invoke('media:capabilities'),
   },
   driver: {
@@ -46,6 +49,11 @@ const api = {
     ): Promise<{ ok: boolean; deleted?: number; total?: number; demo?: boolean; message?: string }> =>
       ipcRenderer.invoke('transfer:remove', source, ids),
     startDrag: (source: string, ids: string[]): void => ipcRenderer.send('transfer:startDrag', source, ids),
+    move: (
+      source: string,
+      ids: string[],
+    ): Promise<{ ok: boolean; moved?: number; total?: number; dir?: string; demo?: boolean; message?: string }> =>
+      ipcRenderer.invoke('transfer:move', source, ids),
   },
   license: {
     status: (): Promise<{ state: string; key?: string; plan?: string; expiresAt?: string | null }> =>

@@ -62,9 +62,9 @@ export async function pair(): Promise<{ ok: boolean; message: string }> {
   )
 }
 
-export async function thumb(source: SourceKey, id: string): Promise<string | null> {
+export async function thumb(source: SourceKey, id: string, size?: number): Promise<string | null> {
   if (readSettings().demo) return null
-  return getThumb(source, id)
+  return getThumb(source, id, size)
 }
 
 // Presenza degli strumenti (per spiegare anteprime mancanti).

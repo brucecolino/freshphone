@@ -101,6 +101,14 @@ class Agent:
             'usedBytes': used, 'totalBytes': total, 'freeBytes': free,
         }
 
+    @staticmethod
+    def _date(st):
+        d = st.get('st_birthtime') or st.get('st_mtime')
+        try:
+            return d.isoformat()
+        except Exception:
+            return str(d) if d else ''
+
     async def listing(self, source):
         afc = await self.afc()
         items = []
@@ -122,22 +130,40 @@ class Agent:
                     t = ftype(f)
                     if t == 'file':
                         continue
+                    rel = d + '/' + f
+                    size, date = 0, ''
+                    try:
+                        st = await aw(afc.stat('/DCIM/' + rel))
+                        size = st.get('st_size', 0)
+                        date = self._date(st)
+                    except Exception:
+                        pass
                     items.append({
-                        'id': d + '/' + f, 'name': f, 'type': t,
-                        'sizeBytes': 0, 'date': '',
+                        'id': rel, 'name': f, 'type': t, 'sizeBytes': size, 'date': date,
                         'kind': 'video' if t == 'video' else f.rsplit('.', 1)[-1].upper(),
                     })
         else:
+            # Sezione File: contenuto della media partition (cartelle + file sparsi).
+            base = '/'
             try:
-                root = await aw(afc.listdir('/'))
+                names = await aw(afc.listdir(base))
             except Exception:
-                root = []
-            for n in root:
-                if n in ('.', '..') or '.' not in n:
+                names = []
+            for n in names:
+                if n in ('.', '..'):
                     continue
+                size, date, is_dir = 0, '', False
+                try:
+                    st = await aw(afc.stat(base + n))
+                    is_dir = st.get('st_ifmt') == 'S_IFDIR'
+                    size = st.get('st_size', 0)
+                    date = self._date(st)
+                except Exception:
+                    pass
                 items.append({
-                    'id': n, 'name': n, 'type': 'file',
-                    'sizeBytes': 0, 'date': '', 'kind': n.rsplit('.', 1)[-1].upper(),
+                    'id': n, 'name': n, 'type': 'folder' if is_dir else 'file', 'isDir': is_dir,
+                    'sizeBytes': size, 'date': date,
+                    'kind': 'cartella' if is_dir else (n.rsplit('.', 1)[-1].upper() if '.' in n else ''),
                 })
         return items
 

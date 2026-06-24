@@ -17,11 +17,10 @@ function safe(id: string): string {
   return id.replace(/[^a-zA-Z0-9._-]/g, '_')
 }
 
-// Frame video con ffmpeg (ffmpeg decodifica bene MOV/MP4; gli HEIC no, perciò
-// le immagini le gestisce l'agent con pillow-heif).
-async function videoThumb(localPath: string): Promise<Buffer | null> {
+// Frame video con ffmpeg (decodifica MOV/MP4; gli HEIC li fa l'agent con pillow-heif).
+async function videoThumb(localPath: string, size: number): Promise<Buffer | null> {
   const out = `${localPath}.thumb.jpg`
-  const args = ['-y', '-ss', '1', '-i', localPath, '-frames:v', '1', '-vf', 'scale=256:-2', out]
+  const args = ['-y', '-ss', '1', '-i', localPath, '-frames:v', '1', '-vf', `scale=${size}:-2`, out]
   const r = await run(toolPath('ffmpeg'), args, 25000)
   if (r.code !== 0) return null
   try {
@@ -33,10 +32,10 @@ async function videoThumb(localPath: string): Promise<Buffer | null> {
   }
 }
 
-// Ritorna un data URL JPEG della miniatura, oppure null se non generabile.
-export async function getThumb(source: SourceKey, id: string): Promise<string | null> {
+// Ritorna un data URL JPEG della miniatura (size = lato lungo), o null.
+export async function getThumb(source: SourceKey, id: string, size = 384): Promise<string | null> {
   await mkdir(cacheDir(), { recursive: true }).catch(() => undefined)
-  const cached = join(cacheDir(), `${safe(id)}.jpg`)
+  const cached = join(cacheDir(), `${safe(id)}_${size}.jpg`)
   if (existsSync(cached)) {
     try {
       const b = await readFile(cached)
@@ -52,7 +51,7 @@ export async function getThumb(source: SourceKey, id: string): Promise<string | 
 
   if (!isVideo) {
     // Immagini (HEIC/HEIF/JPG/PNG…): miniatura generata dall'agent.
-    const r = await agent.tryCall<{ b64?: string } | null>('thumb', { remote, size: 256 }, null, 30000)
+    const r = await agent.tryCall<{ b64?: string } | null>('thumb', { remote, size }, null, 30000)
     if (!r?.b64) return null
     await writeFile(cached, Buffer.from(r.b64, 'base64')).catch(() => undefined)
     return `data:image/jpeg;base64,${r.b64}`
@@ -62,7 +61,7 @@ export async function getThumb(source: SourceKey, id: string): Promise<string | 
   const local = join(tmpdir(), `fp_${safe(id)}`)
   const pulled = await agent.tryCall<{ path?: string } | null>('pull', { remote, dest: local }, null, 60000)
   if (!pulled) return null
-  const buf = await videoThumb(local)
+  const buf = await videoThumb(local, size)
   await rm(local, { force: true }).catch(() => undefined)
   if (!buf) return null
 

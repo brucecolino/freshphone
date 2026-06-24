@@ -11,9 +11,10 @@ export interface DeviceStatus {
 export interface MediaItem {
   id: string
   name: string
-  type: 'photo' | 'video' | 'file'
+  type: 'photo' | 'video' | 'file' | 'folder'
   sizeBytes: number
   date: string
   durationSec?: number
   kind?: string
+  isDir?: boolean
 }
