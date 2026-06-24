@@ -1,9 +1,12 @@
-import { app, BrowserWindow, nativeTheme, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme, nativeImage, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { readSettings, writeSettings, type ThemeSource } from './settings'
 import { getState, listItems, pair, thumb, capabilities } from './device/manager'
+import { probe } from './device/libimobiledevice'
+import { ensureOriginals } from './media/originals'
 import { installAppleDrivers } from './drivers/onboarding'
 import { exportSelection } from './transfer/export'
+import { removeSelection } from './transfer/remove'
 import type { SourceKey } from './device/engine'
 
 let win: BrowserWindow | null = null
@@ -67,6 +70,18 @@ app.whenReady().then(() => {
   ipcMain.handle('media:thumb', (_e, source: SourceKey, id: string) => thumb(source, id))
   ipcMain.handle('media:capabilities', () => capabilities())
   ipcMain.handle('transfer:export', (_e, source: SourceKey, ids: string[]) => exportSelection(source, ids))
+  ipcMain.handle('transfer:remove', (_e, source: SourceKey, ids: string[]) => removeSelection(source, ids))
+  ipcMain.on('transfer:startDrag', async (e, source: SourceKey, ids: string[]) => {
+    if (readSettings().demo) return
+    const p = await probe()
+    if (!p.connected || !p.trusted || !p.udid) return
+    const files = await ensureOriginals(p.udid, source, ids)
+    if (files.length === 0) return
+    const icon = nativeImage.createFromDataURL(
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    )
+    e.sender.startDrag({ files, file: files[0], icon })
+  })
   ipcMain.handle('driver:install', () => installAppleDrivers())
 
   nativeTheme.on('updated', () => {

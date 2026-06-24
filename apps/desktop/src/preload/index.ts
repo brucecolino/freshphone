@@ -39,6 +39,12 @@ const api = {
       ids: string[],
     ): Promise<{ ok: boolean; copied?: number; total?: number; dir?: string; demo?: boolean; message?: string }> =>
       ipcRenderer.invoke('transfer:export', source, ids),
+    remove: (
+      source: string,
+      ids: string[],
+    ): Promise<{ ok: boolean; deleted?: number; total?: number; demo?: boolean; message?: string }> =>
+      ipcRenderer.invoke('transfer:remove', source, ids),
+    startDrag: (source: string, ids: string[]): void => ipcRenderer.send('transfer:startDrag', source, ids),
   },
 }
 

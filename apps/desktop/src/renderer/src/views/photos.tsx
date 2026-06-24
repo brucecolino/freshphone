@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
 import type { MediaItem } from '../types'
 
@@ -15,11 +15,13 @@ function AssetTile({
   color,
   selected,
   onClick,
+  onDragStart,
 }: {
   item: MediaItem
   color: string
   selected: boolean
   onClick: () => void
+  onDragStart?: () => void
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   const [src, setSrc] = useState<string | null>(null)
@@ -57,6 +59,11 @@ function AssetTile({
     <button
       ref={ref}
       onClick={onClick}
+      draggable
+      onDragStart={(e) => {
+        e.preventDefault()
+        onDragStart?.()
+      }}
       title={`${item.name}${item.sizeBytes ? ` · ${fmtSize(item.sizeBytes)}` : ''}`}
       className={cn(
         'relative aspect-square overflow-hidden rounded-md',
@@ -94,11 +101,15 @@ export function Photos() {
   const [exporting, setExporting] = useState(false)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadItems = useCallback(() => {
     window.fp.device.list('photos').then((x) => setItems(x as MediaItem[]))
+  }, [])
+
+  useEffect(() => {
+    loadItems()
     window.fp.device.status().then((s) => setMode((s as { mode?: string }).mode))
     window.fp.media.capabilities().then((c) => setCaps(c as { afc: boolean; ffmpeg: boolean }))
-  }, [])
+  }, [loadItems])
 
   const view = useMemo(() => {
     const filtered = items.filter((it) =>
@@ -131,6 +142,27 @@ export function Photos() {
     } finally {
       setExporting(false)
     }
+  }
+
+  async function doRemove() {
+    setExporting(true)
+    setExportMsg(null)
+    try {
+      const r = await window.fp.transfer.remove('photos', Array.from(sel))
+      if (r.ok) {
+        setExportMsg(`Eliminati ${r.deleted}/${r.total} dall'iPhone`)
+        setSel(new Set())
+        loadItems()
+      } else {
+        setExportMsg(r.message ?? 'Errore')
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  function doDrag(id: string) {
+    window.fp.transfer.startDrag('photos', sel.has(id) ? Array.from(sel) : [id])
   }
 
   return (
@@ -180,6 +212,9 @@ export function Photos() {
               <button onClick={doExport} disabled={exporting} className="bg-grad rounded-full px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60">
                 {exporting ? 'Esporto…' : 'Esporta selezione'}
               </button>
+              <button onClick={doRemove} disabled={exporting} className="rounded-full border border-line px-3 py-1.5 text-xs hover:bg-bg disabled:opacity-60">
+                Elimina
+              </button>
               <button onClick={() => setSel(new Set())} className="rounded-full border border-line px-3 py-1.5 text-xs">
                 Deseleziona
               </button>
@@ -198,6 +233,7 @@ export function Photos() {
               color={palette[i % palette.length]}
               selected={sel.has(it.id)}
               onClick={() => toggle(it.id)}
+              onDragStart={() => doDrag(it.id)}
             />
           ))}
         </div>
