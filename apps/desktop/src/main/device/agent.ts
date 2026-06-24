@@ -1,8 +1,28 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { app } from 'electron'
 import { join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { logLine } from '../log'
+
+function pidFile(): string {
+  return join(app.getPath('userData'), 'fp-agent.pid')
+}
+// Chiude un agent rimasto da una sessione precedente (anti-orfani in dev e prod).
+function killStaleAgent(): void {
+  try {
+    if (!existsSync(pidFile())) return
+    const old = parseInt(readFileSync(pidFile(), 'utf8').trim(), 10)
+    if (old && old !== process.pid) {
+      try {
+        process.kill(old)
+      } catch {
+        /* già terminato */
+      }
+    }
+  } catch {
+    /* noop */
+  }
+}
 
 // Client del processo helper Python persistente (resources/agent/fp_agent.py).
 // Una sola sessione pymobiledevice3 viva: niente avvio di Python per chiamata
@@ -45,9 +65,15 @@ class DeviceAgent {
       this.failedAt = Date.now()
       return false
     }
+    killStaleAgent()
     try {
       // passa il PID di Electron all'agent, così si auto-termina se l'app muore
       const p = spawn(c.cmd, [...c.args, String(process.pid)], { windowsHide: true }) as ChildProcessWithoutNullStreams
+      try {
+        writeFileSync(pidFile(), String(p.pid ?? ''))
+      } catch {
+        /* noop */
+      }
       p.stdout.setEncoding('utf8')
       p.stdout.on('data', (d: string) => this.onData(d))
       p.stderr.on('data', (d) => logLine('agent: ' + String(d).trim()))
