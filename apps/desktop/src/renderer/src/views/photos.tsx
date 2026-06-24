@@ -86,7 +86,7 @@ const SORTS: { v: string; label: string }[] = [
   { v: 'size_desc', label: 'Dimensione (più grandi)' },
   { v: 'size_asc', label: 'Dimensione (più piccole)' },
 ]
-const CELL = [44, 64, 92, 128, 175, 240] // da minuscole (≈20/fila) a grandi
+const CELL = [32, 54, 84, 120, 168, 230] // da minuscole (≈24/fila) a grandi
 
 type Filter = 'all' | 'photo' | 'video'
 const chips: { k: Filter; label: string }[] = [
@@ -98,14 +98,18 @@ const chips: { k: Filter; label: string }[] = [
 function Tile({
   item,
   selected,
-  onClick,
+  draggable,
+  onMouseDown,
+  onMouseEnter,
   onContextMenu,
   onDoubleClick,
   onDragStart,
 }: {
   item: MediaItem
   selected: boolean
-  onClick: (e: React.MouseEvent) => void
+  draggable: boolean
+  onMouseDown: (e: React.MouseEvent) => void
+  onMouseEnter: () => void
   onContextMenu: (e: React.MouseEvent) => void
   onDoubleClick: () => void
   onDragStart: () => void
@@ -123,22 +127,23 @@ function Tile({
 
   return (
     <button
-      onClick={onClick}
+      onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
       onContextMenu={onContextMenu}
       onDoubleClick={onDoubleClick}
-      draggable
+      draggable={draggable}
       onDragStart={(e) => {
         e.preventDefault()
         onDragStart()
       }}
       title={`${item.name} · ${fmtSize(item.sizeBytes)} · ${fmtDate(item.date)}`}
       className={cn(
-        'relative block aspect-square w-full overflow-hidden rounded-md bg-line/60',
+        'relative block aspect-square w-full select-none overflow-hidden rounded-md bg-line/60',
         selected && 'ring-2 ring-brand ring-offset-2 ring-offset-bg',
       )}
     >
       {src ? (
-        <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+        <img src={src} alt="" loading="lazy" draggable={false} className="h-full w-full object-cover" />
       ) : (
         <span className="block h-full w-full animate-pulse bg-line/50" />
       )}
@@ -261,7 +266,8 @@ export function Photos() {
   const [filter, setFilter] = useState<Filter>('all')
   const [byMonth, setByMonth] = useState(false)
   const [sel, setSel] = useState<Set<string>>(new Set())
-  const [lastIndex, setLastIndex] = useState<number | null>(null)
+  const [anchor, setAnchor] = useState<number | null>(null)
+  const dragRef = useRef<{ active: boolean; start: number; base: Set<string>; moved: boolean } | null>(null)
   const [zoom, setZoom] = useState(2)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [propsItem, setPropsItem] = useState<MediaItem | null>(null)
@@ -327,6 +333,28 @@ export function Photos() {
     return sorted
   }, [items, filter, sort])
 
+  // fine del trascinamento di selezione (anche se rilasci fuori dalla griglia)
+  useEffect(() => {
+    const onUp = () => {
+      const d = dragRef.current
+      if (!d?.active) return
+      if (!d.moved) {
+        const id = view[d.start]?.id
+        if (id)
+          setSel((s) => {
+            const n = new Set(s)
+            if (n.has(id)) n.delete(id)
+            else n.add(id)
+            return n
+          })
+      }
+      setAnchor(d.start)
+      dragRef.current = null
+    }
+    window.addEventListener('mouseup', onUp)
+    return () => window.removeEventListener('mouseup', onUp)
+  }, [view])
+
   const rows = useMemo<Row[]>(() => {
     const indexed: IndexedItem[] = view.map((item, index) => ({ item, index }))
     const chunk = (arr: IndexedItem[], prefix: string): Row[] => {
@@ -358,26 +386,37 @@ export function Photos() {
     return out
   }, [view, columns, byMonth])
 
-  function clickTile(e: React.MouseEvent, index: number, id: string) {
-    if (e.shiftKey && lastIndex != null) {
-      const [a, b] = [Math.min(lastIndex, index), Math.max(lastIndex, index)]
+  // Selezione: clic = toggle, Shift+clic = intervallo, e — come su iPhone —
+  // premere e trascinare sulle foto seleziona quelle che si attraversano.
+  function tileMouseDown(e: React.MouseEvent, index: number, id: string) {
+    if (e.button !== 0) return
+    if (e.shiftKey && anchor != null) {
+      const [a, b] = [Math.min(anchor, index), Math.max(anchor, index)]
       const range = view.slice(a, b + 1).map((it) => it.id)
       setSel((s) => new Set([...s, ...range]))
-    } else {
-      setSel((s) => {
-        const n = new Set(s)
-        if (n.has(id)) n.delete(id)
-        else n.add(id)
-        return n
-      })
-      setLastIndex(index)
+      dragRef.current = null
+      return
     }
+    dragRef.current = { active: true, start: index, base: new Set(sel), moved: false }
+    if (!sel.has(id)) e.preventDefault() // il drag-out nativo parte solo dalle tile già selezionate
+  }
+  function tileMouseEnter(index: number) {
+    const d = dragRef.current
+    if (!d?.active) return
+    d.moved = true
+    const [a, b] = [Math.min(d.start, index), Math.max(d.start, index)]
+    const range = view.slice(a, b + 1).map((it) => it.id)
+    setSel(new Set([...d.base, ...range]))
+  }
+  function tileDragStart(id: string) {
+    dragRef.current = null // il drag nativo (verso Esplora risorse) prende il sopravvento
+    window.fp.transfer.startDrag('photos', sel.has(id) ? selIds() : [id])
   }
   function contextTile(e: React.MouseEvent, index: number, id: string) {
     e.preventDefault()
     if (!sel.has(id)) {
       setSel(new Set([id]))
-      setLastIndex(index)
+      setAnchor(index)
     }
     setMenu({ x: e.clientX, y: e.clientY })
   }
@@ -508,16 +547,6 @@ export function Photos() {
               ))}
             </select>
 
-            <div className="flex h-8 items-center rounded-lg border border-line">
-              <button onClick={() => setZoom((z) => Math.max(0, z - 1))} disabled={zoom === 0} className="px-2 text-base text-ink2 hover:text-ink disabled:opacity-30" title="Più piccole">
-                −
-              </button>
-              <span className="w-10 text-center text-[11px] text-ink2">{CELL[zoom]}px</span>
-              <button onClick={() => setZoom((z) => Math.min(CELL.length - 1, z + 1))} disabled={zoom === CELL.length - 1} className="px-2 text-base text-ink2 hover:text-ink disabled:opacity-30" title="Più grandi (anche Ctrl+rotellina)">
-                +
-              </button>
-            </div>
-
             {sel.size === 0 && (
               <button onClick={selectAll} disabled={view.length === 0} className="h-8 rounded-lg border border-line px-3 text-xs hover:bg-bg disabled:opacity-50">
                 Seleziona tutto
@@ -546,10 +575,12 @@ export function Photos() {
                       key={item.id}
                       item={item}
                       selected={sel.has(item.id)}
-                      onClick={(e) => clickTile(e, index, item.id)}
+                      draggable={sel.has(item.id)}
+                      onMouseDown={(e) => tileMouseDown(e, index, item.id)}
+                      onMouseEnter={() => tileMouseEnter(index)}
                       onContextMenu={(e) => contextTile(e, index, item.id)}
                       onDoubleClick={() => setViewerIdx(index)}
-                      onDragStart={() => window.fp.transfer.startDrag('photos', sel.has(item.id) ? selIds() : [item.id])}
+                      onDragStart={() => tileDragStart(item.id)}
                     />
                   ))}
                 </div>
