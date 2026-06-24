@@ -3,7 +3,7 @@ import { hostname } from 'node:os'
 import { readSettings, writeSettings } from './settings'
 
 // Base URL del sito (endpoint /api/license/activate). Override via env.
-const API_BASE = process.env.FRESHPHONE_API_BASE || 'http://localhost:3000'
+const API_BASE = process.env.FRESHPHONE_API_BASE || 'https://freshphone.it'
 
 const KEY_RE = /^FP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/
 
