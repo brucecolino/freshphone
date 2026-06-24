@@ -27,6 +27,9 @@ prisma/dev.db-journal
 # desktop / electron
 apps/desktop/release/
 apps/desktop/out/
+# binari device locali per lo sviluppo (machine-specific / grandi): non versionati
+apps/desktop/resources/bin/*.exe
+apps/desktop/resources/bin/*.dll
 
 # logs
 *.log

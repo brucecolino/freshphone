@@ -22,10 +22,16 @@ extraResources:
     to: drivers
     filter:
       - '**/*.msi'
+  # Agent Python persistente (device engine). In produzione si usa l'exe freezato
+  # in bin/, ma teniamo anche lo script come riferimento/fallback.
+  - from: resources/agent
+    to: agent
+    filter:
+      - '**/*.py'
 
 win:
   target: nsis
-  icon: build/icon.png
+  icon: build/icon.ico
   artifactName: FreshPhone-Setup-${version}.${ext}
 
 nsis:

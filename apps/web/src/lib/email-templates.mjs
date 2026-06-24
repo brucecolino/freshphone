@@ -3,6 +3,8 @@
 // Vincolo: nessuna icona/emoji. Tabelle e stili inline per i client di posta.
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://freshphone.it'
+const LOGO = `${SITE}/freshphone-logo.png`
+const GRAD = 'linear-gradient(90deg,#2c6e9c,#29a99b,#57c98a)'
 
 const C = {
   bg: '#f6f8fa',
@@ -22,7 +24,7 @@ function formatEur(v) {
 
 function button(href, label) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 4px;"><tr>
-    <td align="center" style="border-radius:999px;background:${C.brand};">
+    <td align="center" style="border-radius:999px;background:${C.brand};background-image:${GRAD};">
       <a href="${href}" style="display:inline-block;padding:12px 28px;font-family:${FONT};font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">${label}</a>
     </td></tr></table>`
 }
@@ -50,9 +52,9 @@ function shell({ preheader = '', heading = '', intro = '', body = '', showUnsub 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.bg};">
   <tr><td align="center" style="padding:28px 12px;">
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;background:${C.surface};border:1px solid ${C.line};border-radius:14px;overflow:hidden;">
-      <tr><td style="background:#29a99b;background:linear-gradient(90deg,#2c6e9c,#29a99b,#57c98a);padding:22px 28px;">
-        <div style="font-family:${FONT};font-size:20px;font-weight:700;color:#ffffff;letter-spacing:.3px;">FreshPhone</div>
-        <div style="font-family:${FONT};font-size:12px;color:rgba(255,255,255,.88);margin-top:2px;">Smart iPhone File Manager</div>
+      <tr><td style="height:6px;line-height:6px;font-size:0;background:#29a99b;background-image:${GRAD};">&nbsp;</td></tr>
+      <tr><td align="center" style="padding:26px 28px 14px;background:#ffffff;">
+        <img src="${LOGO}" width="196" alt="FreshPhone" style="display:block;width:196px;max-width:72%;height:auto;border:0;outline:none;text-decoration:none;">
       </td></tr>
       <tr><td style="padding:28px 28px 6px;">
         ${heading ? `<h1 style="margin:0 0 10px;font-family:${FONT};font-size:21px;font-weight:700;color:${C.deep};">${heading}</h1>` : ''}

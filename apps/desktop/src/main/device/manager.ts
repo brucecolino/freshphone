@@ -1,6 +1,6 @@
 import { readSettings } from '../settings'
 import { mockEngine } from './mock'
-import { probe, afcList, pairDevice } from './libimobiledevice'
+import { agent } from './agent'
 import { getThumb } from '../media/thumbs'
 import { run } from './runner'
 import { toolPath } from './tools'
@@ -17,57 +17,60 @@ export interface DeviceState {
   totalBytes?: number
 }
 
+interface AgentStatus {
+  connected: boolean
+  trusted: boolean
+  udid?: string
+  name?: string
+  usedBytes?: number
+  totalBytes?: number
+  freeBytes?: number
+}
+
 export async function getState(): Promise<DeviceState> {
   if (readSettings().demo) {
     const s = await mockEngine.getStatus()
-    return {
-      mode: 'demo',
-      toolsOk: true,
-      connected: true,
-      trusted: true,
-      name: s.name,
-      usedBytes: s.usedBytes,
-      totalBytes: s.totalBytes,
-    }
+    return { mode: 'demo', toolsOk: true, connected: true, trusted: true, name: s.name, usedBytes: s.usedBytes, totalBytes: s.totalBytes }
   }
 
-  const p = await probe()
-  if (!p.connected) return { mode: 'none', toolsOk: p.toolsOk, connected: false, trusted: false }
+  const s = await agent.tryCall<AgentStatus | null>('status', {}, null, 15000)
+  if (!s) return { mode: 'none', toolsOk: false, connected: false, trusted: false } // agent non avviabile
+  if (!s.connected) return { mode: 'none', toolsOk: true, connected: false, trusted: false }
   return {
     mode: 'device',
     toolsOk: true,
     connected: true,
-    trusted: p.trusted,
-    name: p.name,
-    usedBytes: p.usedBytes,
-    totalBytes: p.totalBytes,
+    trusted: s.trusted,
+    name: s.name,
+    usedBytes: s.usedBytes,
+    totalBytes: s.totalBytes,
   }
 }
 
 export async function listItems(source: SourceKey): Promise<MediaItem[]> {
   if (readSettings().demo) return mockEngine.list(source)
-  const p = await probe()
-  if (!p.connected || !p.trusted || !p.udid) return []
-  const items = await afcList(p.udid, source)
-  return items ?? []
+  return agent.tryCall<MediaItem[]>('list', { source }, [], 60000)
 }
 
 export async function pair(): Promise<{ ok: boolean; message: string }> {
-  const p = await probe()
-  if (!p.udid) return { ok: false, message: 'Nessun dispositivo collegato' }
-  return pairDevice(p.udid)
+  if (readSettings().demo) return { ok: true, message: 'Modalità demo' }
+  return agent.tryCall<{ ok: boolean; message: string }>(
+    'pair',
+    {},
+    { ok: false, message: 'Strumenti dispositivo non disponibili' },
+    30000,
+  )
 }
 
 export async function thumb(source: SourceKey, id: string): Promise<string | null> {
   if (readSettings().demo) return null
-  const p = await probe()
-  if (!p.connected || !p.trusted || !p.udid) return null
-  return getThumb(p.udid, source, id)
+  return getThumb(source, id)
 }
 
-// Presenza degli strumenti opzionali (per spiegare anteprime mancanti).
+// Presenza degli strumenti (per spiegare anteprime mancanti).
 export async function capabilities(): Promise<{ afc: boolean; ffmpeg: boolean }> {
-  const afc = (await run(toolPath('pymobiledevice3'), ['version'])).code !== 127
+  const ping = await agent.tryCall<{ pong?: boolean } | null>('ping', {}, null, 8000)
+  const afc = ping != null
   const ffmpeg = (await run(toolPath('ffmpeg'), ['-version'])).code !== 127
   return { afc, ffmpeg }
 }

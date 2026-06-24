@@ -1,9 +1,7 @@
 import { dialog } from 'electron'
 import { join, basename } from 'node:path'
 import { readSettings } from '../settings'
-import { probe } from '../device/libimobiledevice'
-import { run } from '../device/runner'
-import { toolPath } from '../device/tools'
+import { agent } from '../device/agent'
 import type { SourceKey } from '../device/engine'
 
 export interface ExportResult {
@@ -13,6 +11,11 @@ export interface ExportResult {
   dir?: string
   demo?: boolean
   message?: string
+}
+
+interface AgentStatus {
+  connected: boolean
+  trusted: boolean
 }
 
 // Esporta gli elementi selezionati in una cartella scelta dall'utente.
@@ -31,8 +34,8 @@ export async function exportSelection(source: SourceKey, ids: string[]): Promise
     return { ok: false, demo: true, dir, message: 'Modalità demo: nessun file reale da esportare. Disattiva la demo e collega l’iPhone.' }
   }
 
-  const p = await probe()
-  if (!p.connected || !p.trusted || !p.udid) {
+  const st = await agent.tryCall<AgentStatus | null>('status', {}, null, 15000)
+  if (!st?.connected || !st.trusted) {
     return { ok: false, dir, message: 'iPhone non collegato o non autorizzato' }
   }
 
@@ -40,8 +43,8 @@ export async function exportSelection(source: SourceKey, ids: string[]): Promise
   for (const id of ids) {
     const remote = source === 'photos' ? `/DCIM/${id}` : `/${id}`
     const local = join(dir, basename(id))
-    const r = await run(toolPath('pymobiledevice3'), ['afc', 'pull', remote, local, '--udid', p.udid], 60000)
-    if (r.code === 0) copied++
+    const r = await agent.tryCall<{ path?: string } | null>('pull', { remote, dest: local }, null, 120000)
+    if (r) copied++
   }
   return { ok: true, copied, total: ids.length, dir }
 }

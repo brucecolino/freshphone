@@ -90,8 +90,8 @@ export function Settings() {
           Modalità demo (dati di esempio senza iPhone)
         </label>
         <p className="mt-2 text-xs text-ink2">
-          Disattivala per usare l’iPhone reale: servono i binari libimobiledevice in <code>resources/bin</code> e
-          l’Apple Mobile Device Driver.
+          Disattivala per usare l’iPhone reale (rilevamento automatico al collegamento). I driver Apple vengono
+          installati dall’installer; se l’iPhone non viene visto, controlla cavo e autorizzazione.
         </p>
       </div>
 

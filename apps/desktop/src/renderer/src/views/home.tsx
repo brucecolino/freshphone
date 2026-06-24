@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import type { DeviceStatus } from '../types'
+import { useState, type ReactNode } from 'react'
+import { useDevice } from '../store/device'
 import type { NavKey } from '../components/sidebar'
 
 const gb = (b?: number) => `${((b ?? 0) / 1_000_000_000).toFixed(1)} GB`
@@ -18,16 +18,10 @@ function Banner({ children }: { children: ReactNode }) {
 }
 
 export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
-  const [status, setStatus] = useState<DeviceStatus | null>(null)
+  const status = useDevice((s) => s.status)
+  const refresh = useDevice((s) => s.refresh)
   const [pairing, setPairing] = useState(false)
   const [driverMsg, setDriverMsg] = useState<string | null>(null)
-
-  const load = useCallback(() => {
-    window.fp.device.status().then((s) => setStatus(s as DeviceStatus))
-  }, [])
-  useEffect(() => {
-    load()
-  }, [load])
 
   async function authorize() {
     setPairing(true)
@@ -35,7 +29,7 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
       await window.fp.device.pair()
     } finally {
       setPairing(false)
-      load()
+      void refresh()
     }
   }
 
@@ -55,30 +49,37 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
           ? 'Modalità demo'
           : status?.connected
             ? `${status.name ?? 'iPhone'} collegato`
-            : 'Nessun iPhone collegato'}
+            : 'Nessun iPhone collegato — ricerca in corso…'}
       </p>
 
       {status?.mode === 'none' && status.toolsOk === false && (
         <Banner>
-          <p>
-            Strumenti dispositivo non trovati. Inserisci i binari libimobiledevice in <code>resources/bin</code> (vedi
-            il README). Serve anche il driver Apple. In alternativa attiva la modalità demo in Impostazioni.
+          <p className="font-medium">Strumenti dispositivo non trovati</p>
+          <p className="mt-1 text-ink2">
+            Manca <code>pymobiledevice3</code> in <code>resources/bin</code>. Reinstalla FreshPhone, oppure attiva la
+            modalità demo in Impostazioni per provare l’interfaccia.
           </p>
-          <button onClick={installDriver} className="mt-3 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-bg">
-            Installa driver Apple
-          </button>
-          {driverMsg && <p className="mt-2 text-xs text-ink2">{driverMsg}</p>}
         </Banner>
       )}
+
       {status?.mode === 'none' && status.toolsOk !== false && (
         <Banner>
-          <p>Collega il tuo iPhone al PC con un cavo USB. Se non viene rilevato, installa il driver Apple.</p>
-          <button onClick={installDriver} className="mt-3 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-bg">
-            Installa driver Apple
+          <p className="font-medium">Sto cercando l’iPhone…</p>
+          <p className="mt-1 text-ink2">
+            Collegalo con un <strong>cavo dati</strong> (preferibilmente quello originale Apple, non un cavo solo
+            ricarica), direttamente a una porta USB del PC. Poi <strong>sblocca</strong> il telefono e, alla richiesta,
+            tocca <strong>Autorizza</strong>. Il collegamento viene rilevato in automatico.
+          </p>
+          <button
+            onClick={installDriver}
+            className="mt-3 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold hover:bg-bg"
+          >
+            Reinstalla driver Apple
           </button>
           {driverMsg && <p className="mt-2 text-xs text-ink2">{driverMsg}</p>}
         </Banner>
       )}
+
       {status?.connected && !status.trusted && (
         <Banner>
           <span>iPhone collegato. Sblocca il telefono e tocca “Autorizza”, poi premi qui.</span>

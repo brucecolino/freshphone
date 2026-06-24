@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
+import { useDevice } from '../store/device'
 import type { MediaItem } from '../types'
 
 const palette = [
@@ -101,15 +102,23 @@ export function Photos() {
   const [exporting, setExporting] = useState(false)
   const [exportMsg, setExportMsg] = useState<string | null>(null)
 
+  const devStatus = useDevice((s) => s.status)
+  const ready = devStatus?.mode === 'demo' || (devStatus?.connected === true && devStatus?.trusted === true)
+
   const loadItems = useCallback(() => {
     window.fp.device.list('photos').then((x) => setItems(x as MediaItem[]))
   }, [])
 
+  // Ricarica automaticamente quando il dispositivo diventa pronto (collegato+autorizzato).
   useEffect(() => {
-    loadItems()
-    window.fp.device.status().then((s) => setMode((s as { mode?: string }).mode))
+    setMode(devStatus?.mode)
+    if (ready) loadItems()
+    else setItems([])
+  }, [ready, devStatus?.mode, loadItems])
+
+  useEffect(() => {
     window.fp.media.capabilities().then((c) => setCaps(c as { afc: boolean; ffmpeg: boolean }))
-  }, [loadItems])
+  }, [])
 
   const view = useMemo(() => {
     const filtered = items.filter((it) =>

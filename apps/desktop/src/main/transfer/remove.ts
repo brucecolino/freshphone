@@ -1,8 +1,6 @@
 import { dialog } from 'electron'
 import { readSettings } from '../settings'
-import { probe } from '../device/libimobiledevice'
-import { run } from '../device/runner'
-import { toolPath } from '../device/tools'
+import { agent } from '../device/agent'
 import type { SourceKey } from '../device/engine'
 
 export interface RemoveResult {
@@ -13,6 +11,11 @@ export interface RemoveResult {
   message?: string
 }
 
+interface AgentStatus {
+  connected: boolean
+  trusted: boolean
+}
+
 // Elimina gli elementi selezionati dall'iPhone, previa conferma.
 // Nota: su iOS la rimozione via AFC può richiedere un reindex del DB Foto per
 // liberare lo spazio del tutto (da validare on-device).
@@ -20,8 +23,8 @@ export async function removeSelection(source: SourceKey, ids: string[]): Promise
   if (!ids || ids.length === 0) return { ok: false, message: 'Nessun elemento selezionato' }
   if (readSettings().demo) return { ok: false, demo: true, message: 'Modalità demo: eliminazione non disponibile.' }
 
-  const p = await probe()
-  if (!p.connected || !p.trusted || !p.udid) return { ok: false, message: 'iPhone non collegato o non autorizzato' }
+  const st = await agent.tryCall<AgentStatus | null>('status', {}, null, 15000)
+  if (!st?.connected || !st.trusted) return { ok: false, message: 'iPhone non collegato o non autorizzato' }
 
   const confirm = await dialog.showMessageBox({
     type: 'warning',
@@ -36,8 +39,8 @@ export async function removeSelection(source: SourceKey, ids: string[]): Promise
   let deleted = 0
   for (const id of ids) {
     const remote = source === 'photos' ? `/DCIM/${id}` : `/${id}`
-    const r = await run(toolPath('pymobiledevice3'), ['afc', 'rm', remote, '--udid', p.udid], 30000)
-    if (r.code === 0) deleted++
+    const r = await agent.tryCall<{ ok?: boolean } | null>('rm', { remote }, null, 30000)
+    if (r) deleted++
   }
   return { ok: true, deleted, total: ids.length }
 }

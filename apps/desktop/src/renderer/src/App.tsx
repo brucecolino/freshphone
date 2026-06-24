@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from './store/theme'
+import { useDevice } from './store/device'
 import { Header } from './components/header'
 import { Sidebar, type NavKey } from './components/sidebar'
 import { Home } from './views/home'
@@ -14,6 +15,9 @@ export default function App() {
 
   useEffect(() => {
     void init()
+    const dev = useDevice.getState()
+    dev.start() // polling continuo del dispositivo per tutta la vita dell'app
+    return () => dev.stop()
   }, [init])
 
   return (

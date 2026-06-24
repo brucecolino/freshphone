@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
 import { cn } from '../lib/cn'
-import type { DeviceStatus } from '../types'
+import { useDevice } from '../store/device'
 
 export type NavKey = 'home' | 'photos' | 'files' | 'spazio' | 'settings'
 
@@ -15,11 +14,7 @@ const items: { k: NavKey; label: string }[] = [
 const gb = (b?: number) => `${((b ?? 0) / 1_000_000_000).toFixed(1)} GB`
 
 export function Sidebar({ active, onSelect }: { active: NavKey; onSelect: (k: NavKey) => void }) {
-  const [status, setStatus] = useState<DeviceStatus | null>(null)
-
-  useEffect(() => {
-    window.fp.device.status().then((s) => setStatus(s as DeviceStatus))
-  }, [])
+  const status = useDevice((s) => s.status)
 
   const pct =
     status?.usedBytes && status?.totalBytes ? Math.min(100, (status.usedBytes / status.totalBytes) * 100) : 0

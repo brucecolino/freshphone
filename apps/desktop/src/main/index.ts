@@ -2,7 +2,7 @@ import { app, BrowserWindow, nativeTheme, nativeImage, ipcMain, shell } from 'el
 import { join } from 'node:path'
 import { readSettings, writeSettings, type ThemeSource } from './settings'
 import { getState, listItems, pair, thumb, capabilities } from './device/manager'
-import { probe } from './device/libimobiledevice'
+import { agent } from './device/agent'
 import { ensureOriginals } from './media/originals'
 import { installAppleDrivers, driversPresent } from './drivers/onboarding'
 import { exportSelection } from './transfer/export'
@@ -60,6 +60,7 @@ function createWindow(): void {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b1219' : '#f6f8fa',
     autoHideMenuBar: true,
     title: 'FreshPhone',
+    icon: app.isPackaged ? undefined : join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
@@ -105,9 +106,9 @@ app.whenReady().then(() => {
   ipcMain.handle('transfer:remove', (_e, source: SourceKey, ids: string[]) => removeSelection(source, ids))
   ipcMain.on('transfer:startDrag', async (e, source: SourceKey, ids: string[]) => {
     if (readSettings().demo) return
-    const p = await probe()
-    if (!p.connected || !p.trusted || !p.udid) return
-    const files = await ensureOriginals(p.udid, source, ids)
+    const st = await getState()
+    if (!st.connected || !st.trusted) return
+    const files = await ensureOriginals(source, ids)
     if (files.length === 0) return
     const icon = nativeImage.createFromDataURL(
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -134,6 +135,8 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+app.on('before-quit', () => agent.stop())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
