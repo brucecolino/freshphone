@@ -3,9 +3,33 @@ import type Stripe from 'stripe'
 import type { PlanId } from '@freshphone/shared'
 import { getStripe } from '@/lib/stripe'
 import { fulfillOrder } from '@/lib/fulfillment'
-import { prisma } from '@/lib/db'
+import { syncSubscriptionState } from '@/lib/licensing'
 
 export const runtime = 'nodejs'
+
+// current_period_end è cambiato di posizione tra le versioni dell'API Stripe
+// (subscription vs subscription item): leggiamo entrambe le forme.
+function currentPeriodEnd(sub: Stripe.Subscription): number | null {
+  const s = sub as unknown as {
+    current_period_end?: number
+    items?: { data?: { current_period_end?: number }[] }
+  }
+  if (typeof s.current_period_end === 'number') return s.current_period_end
+  const item = s.items?.data?.[0]?.current_period_end
+  return typeof item === 'number' ? item : null
+}
+
+// L'id abbonamento sulla fattura può stare in `subscription` (vecchio) o
+// `parent.subscription_details.subscription` (nuovo).
+function invoiceSubscriptionId(inv: Stripe.Invoice): string | null {
+  const i = inv as unknown as {
+    subscription?: string | { id?: string } | null
+    parent?: { subscription_details?: { subscription?: string | { id?: string } | null } | null } | null
+  }
+  const s = i.subscription ?? i.parent?.subscription_details?.subscription ?? null
+  if (!s) return null
+  return typeof s === 'string' ? s : (s.id ?? null)
+}
 
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET
@@ -43,18 +67,36 @@ export async function POST(req: Request) {
         }
         break
       }
+      // Rinnovo riuscito (o primo pagamento): allinea la scadenza al periodo pagato.
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded': {
+        const inv = event.data.object as Stripe.Invoice
+        const subId = invoiceSubscriptionId(inv)
+        if (subId) {
+          const sub = await getStripe().subscriptions.retrieve(subId)
+          await syncSubscriptionState({ subscriptionId: subId, stripeStatus: sub.status, currentPeriodEnd: currentPeriodEnd(sub) })
+        }
+        break
+      }
+      // Pagamento fallito: PAST_DUE. Stripe ritenta; la licenza resta valida finché
+      // non passa la scadenza. Se i retry si esauriscono arriva subscription.updated/deleted.
+      case 'invoice.payment_failed': {
+        const inv = event.data.object as Stripe.Invoice
+        const subId = invoiceSubscriptionId(inv)
+        if (subId) await syncSubscriptionState({ subscriptionId: subId, stripeStatus: 'past_due' })
+        break
+      }
+      case 'customer.subscription.updated': {
+        const snap = event.data.object as Stripe.Subscription
+        // Rileggi lo stato più recente: gli eventi Stripe possono arrivare fuori ordine
+        // e lo snapshot dell'evento potrebbe portare un period_end/stato non aggiornato.
+        const sub = await getStripe().subscriptions.retrieve(snap.id)
+        await syncSubscriptionState({ subscriptionId: sub.id, stripeStatus: sub.status, currentPeriodEnd: currentPeriodEnd(sub) })
+        break
+      }
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
-        const order = await prisma.order.findFirst({
-          where: { providerSubscriptionId: sub.id },
-          include: { license: true },
-        })
-        if (order?.license) {
-          await prisma.license.update({
-            where: { id: order.license.id },
-            data: { status: 'EXPIRED', subscriptionStatus: 'CANCELED' },
-          })
-        }
+        await syncSubscriptionState({ subscriptionId: sub.id, stripeStatus: 'canceled', currentPeriodEnd: currentPeriodEnd(sub) })
         break
       }
       default:
