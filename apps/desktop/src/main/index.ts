@@ -2,17 +2,20 @@ import { app, BrowserWindow, nativeTheme, nativeImage, ipcMain, shell, protocol,
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { readSettings, writeSettings, type ThemeSource } from './settings'
-import { getState, listItems, browse, analyze, pair, thumb, capabilities } from './device/manager'
+import { getState, listItems, browse, analyze, faces, pair, thumb, capabilities } from './device/manager'
 import { agent } from './device/agent'
 import { ensureOriginals } from './media/originals'
 import { installAppleDrivers, driversPresent } from './drivers/onboarding'
-import { exportSelection } from './transfer/export'
+import { exportSelection, planTransfer, type TransferUnit } from './transfer/export'
 import { removeSelection } from './transfer/remove'
 import { moveSelection } from './transfer/move'
 import { openItem } from './media/open'
 import { viewerDir, localMediaUrl } from './media/viewer'
 import { getLog, openLogFile } from './log'
-import { getLicenseStatus, activate, deactivate } from './license'
+import { getAnalysisCache, mergeAnalysisCache, getFacesCache, mergeFacesCache } from './wizard'
+import { getTags, saveTags, type TagsData } from './tags'
+import { setupUpdater } from './updater'
+import { getLicenseStatus, activate, deactivate, revalidate, getExportUsage, recordExports } from './license'
 import type { SourceKey } from './device/engine'
 
 // Protocollo per servire i file locali al visualizzatore interno (foto HEIC, video).
@@ -121,6 +124,13 @@ app.whenReady().then(() => {
   ipcMain.handle('device:list', (_e, source: SourceKey) => listItems(source))
   ipcMain.handle('device:browse', (_e, path: string) => browse(path))
   ipcMain.handle('device:analyze', (_e, ids: string[]) => analyze(ids))
+  ipcMain.handle('wizard:cacheGet', () => getAnalysisCache())
+  ipcMain.handle('wizard:cacheMerge', (_e, rows: { id: string; bright?: number; std?: number; hash?: string }[]) => mergeAnalysisCache(rows))
+  ipcMain.handle('tags:get', () => getTags())
+  ipcMain.handle('tags:set', (_e, data: TagsData) => saveTags(data))
+  ipcMain.handle('device:faces', (_e, ids: string[]) => faces(ids))
+  ipcMain.handle('faces:cacheGet', () => getFacesCache())
+  ipcMain.handle('faces:cacheMerge', (_e, rows: { id: string; faces: { emb: string; score: number }[] }[]) => mergeFacesCache(rows))
   ipcMain.handle('device:pair', () => pair())
   ipcMain.handle('media:thumb', (_e, source: SourceKey, id: string, size?: number) => thumb(source, id, size))
   ipcMain.handle('media:open', (_e, source: SourceKey, id: string) => openItem(source, id))
@@ -128,21 +138,32 @@ app.whenReady().then(() => {
   ipcMain.handle('media:capabilities', () => capabilities())
   ipcMain.handle('log:get', () => getLog())
   ipcMain.handle('log:open', () => openLogFile())
-  ipcMain.handle('transfer:export', (_e, source: SourceKey, ids: string[]) => exportSelection(source, ids))
-  ipcMain.handle('transfer:remove', (_e, source: SourceKey, ids: string[]) => removeSelection(source, ids))
-  ipcMain.handle('transfer:move', (_e, source: SourceKey, ids: string[]) => moveSelection(source, ids))
-  ipcMain.on('transfer:startDrag', async (e, source: SourceKey, ids: string[]) => {
+  ipcMain.handle('transfer:export', (e, source: SourceKey, items: TransferUnit[]) =>
+    exportSelection(source, items, (p) => e.sender.send('transfer:progress', p)),
+  )
+  ipcMain.handle('transfer:remove', (e, source: SourceKey, ids: string[]) =>
+    removeSelection(source, ids, (p) => e.sender.send('transfer:progress', p)),
+  )
+  ipcMain.handle('transfer:move', (e, source: SourceKey, items: TransferUnit[]) =>
+    moveSelection(source, items, (p) => e.sender.send('transfer:progress', p)),
+  )
+  ipcMain.on('transfer:startDrag', async (e, source: SourceKey, items: TransferUnit[]) => {
     if (readSettings().demo) return
-    const files = await ensureOriginals(source, ids)
+    // Anche il drag-and-drop rispetta il limite gratuito (coppie Live non spezzate) e conta.
+    const plan = planTransfer(items)
+    if (plan.files.length === 0) return
+    const files = await ensureOriginals(source, plan.files)
     if (files.length === 0) return
     const icon = nativeImage.createFromDataURL(
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     )
     e.sender.startDrag({ files, file: files[0], icon })
+    recordExports(files.length)
   })
   ipcMain.handle('driver:status', () => ({ present: driversPresent() }))
   ipcMain.handle('driver:install', () => installAppleDrivers())
   ipcMain.handle('license:status', () => getLicenseStatus())
+  ipcMain.handle('license:usage', () => getExportUsage())
   ipcMain.handle('license:activate', (_e, key: string) => activate(key))
   ipcMain.handle('license:deactivate', () => {
     deactivate()
@@ -154,6 +175,17 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  setupUpdater(() => win)
+
+  // Rivalidazione licenza (rinnovi/revoche degli abbonamenti) all'avvio e ogni 12h.
+  const doRevalidate = (): void => {
+    void revalidate()
+      .then((st) => win?.webContents.send('license:changed', st))
+      .catch(() => undefined)
+  }
+  setTimeout(doRevalidate, 5000)
+  setInterval(doRevalidate, 12 * 60 * 60 * 1000)
+
   const initialUrl = process.argv.find((a) => a.startsWith('freshphone://'))
   if (initialUrl) void handleDeepLink(initialUrl)
   app.on('activate', () => {

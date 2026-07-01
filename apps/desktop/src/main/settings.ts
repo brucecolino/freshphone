@@ -21,6 +21,8 @@ export interface Settings {
   machineId?: string
   /** Licenza attivata. */
   license?: StoredLicense
+  /** File esportati in versione gratuita (limite prova). */
+  freeExportsUsed?: number
 }
 
 const defaults: Settings = { theme: 'system', language: 'it', demo: false }

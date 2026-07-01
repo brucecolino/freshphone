@@ -70,11 +70,11 @@ export function Home({ onNavigate }: { onNavigate: (k: NavKey) => void }) {
   }
 
   const ui = {
-    demo: { icon: <LinkIcon />, color: 'text-brand', title: 'Modalità demo', sub: 'Dati di esempio, senza iPhone' },
-    connected: { icon: <LinkIcon />, color: 'text-brand', title: `${status?.name ?? 'iPhone'} collegato`, sub: 'Pronto all’uso' },
-    untrusted: { icon: <AlertIcon />, color: 'text-amber-500', title: 'Autorizza l’iPhone', sub: 'Sblocca il telefono e tocca “Autorizza”' },
-    searching: { icon: <SearchIcon />, color: 'text-ink2', title: 'Ricerca iPhone in corso…', sub: 'Collega l’iPhone con un cavo e sbloccalo' },
-    error: { icon: <AlertIcon />, color: 'text-red-500', title: 'Problema di connessione', sub: 'Riprova a ricollegare l’iPhone. Se continua, apri il log.' },
+    demo: { icon: <LinkIcon />, color: 'text-brand', title: 'Modalità demo', sub: 'Dati di esempio, senza telefono' },
+    connected: { icon: <LinkIcon />, color: 'text-brand', title: `${status?.name ?? 'Telefono'} collegato`, sub: 'Pronto all’uso' },
+    untrusted: { icon: <AlertIcon />, color: 'text-amber-500', title: 'Autorizza il telefono', sub: 'Sblocca il telefono e tocca “Autorizza” / “Consenti”' },
+    searching: { icon: <SearchIcon />, color: 'text-ink2', title: 'Ricerca telefono in corso…', sub: 'Collega il telefono con un cavo e sbloccalo' },
+    error: { icon: <AlertIcon />, color: 'text-red-500', title: 'Problema di connessione', sub: 'Riprova a ricollegare il telefono. Se continua, apri il log.' },
   }[state]
 
   return (
