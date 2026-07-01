@@ -31,28 +31,46 @@ interface AgentStatus {
   freeBytes?: number
 }
 
+// Ultimo stato "device connesso e autorizzato" valido, per non sfarfallare quando
+// un singolo probe è transitoriamente storto (USB sotto carico, usbmux che sfarfalla,
+// agent occupato). Senza questo, ogni singhiozzo svuotava e ricaricava la galleria.
+let lastConnected: DeviceState | null = null
+let lastConnectedAt = 0
+const STALE_GRACE_MS = 20000
+
 export async function getState(): Promise<DeviceState> {
   if (readSettings().demo) {
     const s = await mockEngine.getStatus()
     return { mode: 'demo', state: 'demo', toolsOk: true, connected: true, trusted: true, name: s.name, usedBytes: s.usedBytes, totalBytes: s.totalBytes }
   }
 
-  const s = await agent.tryCall<AgentStatus | null>('status', {}, null, 15000)
+  const s = await agent.tryCall<AgentStatus | null>('status', {}, null, 12000)
+  // "Buono" = connesso E autorizzato: aggiorna l'ultimo stato valido.
+  if (s && s.connected && s.trusted) {
+    const st: DeviceState = {
+      mode: 'device',
+      state: 'connected',
+      toolsOk: true,
+      connected: true,
+      trusted: true,
+      name: s.name,
+      usedBytes: s.usedBytes,
+      totalBytes: s.totalBytes,
+    }
+    lastConnected = st
+    lastConnectedAt = Date.now()
+    return st
+  }
+  // Qualsiasi risultato "non buono" (null/occupato, disconnesso o untrusted lampeggiante)
+  // entro la grazia da un'ultima connessione valida viene ASSORBITO: niente flip.
+  if (lastConnected && Date.now() - lastConnectedAt < STALE_GRACE_MS) return lastConnected
+  // Oltre la grazia: stato reale.
   if (!s) {
     logLine('device: stato non disponibile (motore device non raggiungibile)')
     return { mode: 'none', state: 'error', toolsOk: false, connected: false, trusted: false }
   }
   if (!s.connected) return { mode: 'none', state: 'searching', toolsOk: true, connected: false, trusted: false }
-  return {
-    mode: 'device',
-    state: s.trusted ? 'connected' : 'untrusted',
-    toolsOk: true,
-    connected: true,
-    trusted: s.trusted,
-    name: s.name,
-    usedBytes: s.usedBytes,
-    totalBytes: s.totalBytes,
-  }
+  return { mode: 'device', state: 'untrusted', toolsOk: true, connected: true, trusted: false, name: s.name, usedBytes: s.usedBytes, totalBytes: s.totalBytes }
 }
 
 export async function listItems(source: SourceKey): Promise<MediaItem[]> {
@@ -74,6 +92,15 @@ export interface AnalyzeRow {
 export async function analyze(ids: string[]): Promise<AnalyzeRow[]> {
   if (readSettings().demo) return []
   return agent.tryCall<AnalyzeRow[]>('analyze', { ids }, [], 180000)
+}
+
+export interface FaceRow {
+  id: string
+  faces: { emb: string; score: number }[]
+}
+export async function faces(ids: string[]): Promise<FaceRow[]> {
+  if (readSettings().demo) return []
+  return agent.tryCall<FaceRow[]>('faces', { ids }, [], 300000)
 }
 
 export async function pair(): Promise<{ ok: boolean; message: string }> {

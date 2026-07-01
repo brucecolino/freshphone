@@ -21,14 +21,14 @@ export function Sidebar({ active, onSelect }: { active: NavKey; onSelect: (k: Na
   const dot = { connected: 'bg-brand', demo: 'bg-brand', untrusted: 'bg-amber-500', searching: 'bg-ink2/50', error: 'bg-red-500' }[state]
   const title =
     state === 'demo'
-      ? 'iPhone (demo)'
+      ? 'Telefono (demo)'
       : state === 'connected'
-        ? status?.name ?? 'iPhone'
+        ? status?.name ?? 'Telefono'
         : state === 'untrusted'
           ? 'Autorizza sul telefono'
           : state === 'error'
             ? 'Problema di connessione'
-            : 'Nessun iPhone'
+            : 'Nessun telefono'
   const subtitle =
     state === 'connected'
       ? 'Collegato'

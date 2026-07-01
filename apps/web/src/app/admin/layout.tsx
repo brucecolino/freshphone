@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 const nav: { href: string; label: string; ready: boolean }[] = [
   { href: '/admin', label: 'Dashboard', ready: true },
   { href: '/admin/orders', label: 'Ordini', ready: true },
-  { href: '/admin/licenses', label: 'Licenze', ready: false },
+  { href: '/admin/licenses', label: 'Licenze', ready: true },
   { href: '/admin/carts', label: 'Carrelli', ready: true },
   { href: '/admin/promos', label: 'Codici promo', ready: true },
   { href: '/admin/newsletter', label: 'Newsletter', ready: true },

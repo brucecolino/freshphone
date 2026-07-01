@@ -8,6 +8,7 @@ import { Photos } from './views/photos'
 import { Wizard } from './views/wizard'
 import { Spazio } from './views/spazio'
 import { Settings } from './views/settings'
+import { UpdateBanner } from './components/UpdateBanner'
 
 export default function App() {
   const init = useTheme((s) => s.init)
@@ -33,6 +34,7 @@ export default function App() {
           {active === 'settings' && <Settings />}
         </main>
       </div>
+      <UpdateBanner />
     </div>
   )
 }

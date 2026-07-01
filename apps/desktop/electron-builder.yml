@@ -2,6 +2,13 @@ appId: app.freshphone.desktop
 productName: FreshPhone
 copyright: © 2026 FreshPhone
 
+# Canale di pubblicazione degli aggiornamenti: GitHub Releases.
+# electron-builder carica l'installer + latest.yml qui; electron-updater lo legge.
+publish:
+  provider: github
+  owner: brucecolino
+  repo: freshphone
+
 directories:
   output: release
   buildResources: build

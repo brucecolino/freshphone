@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { getDict } from '@/i18n/get-dict'
+import { DownloadButtons } from '@/components/download-buttons'
 
 export const metadata: Metadata = {
   title: 'Download — FreshPhone',
@@ -16,12 +16,7 @@ export default async function DownloadPage() {
         <h1 className="text-4xl font-bold sm:text-5xl">{d.title}</h1>
         <p className="mt-4 text-ink2">{d.sub}</p>
         <div className="mt-8 flex flex-col items-center gap-3">
-          <Link
-            href="https://github.com/brucecolino/freshphone/releases"
-            className="bg-grad inline-flex items-center rounded-full px-7 py-3.5 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
-          >
-            {d.button}
-          </Link>
+          <DownloadButtons winLabel={d.button} />
           <span className="text-xs text-ink2">{d.note}</span>
         </div>
       </div>

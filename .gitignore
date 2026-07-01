@@ -30,6 +30,9 @@ apps/desktop/out/
 # binari device locali per lo sviluppo (machine-specific / grandi): non versionati
 apps/desktop/resources/bin/*.exe
 apps/desktop/resources/bin/*.dll
+# cache Python dell'agent
+apps/desktop/resources/agent/__pycache__/
+*.pyc
 
 # logs
 *.log

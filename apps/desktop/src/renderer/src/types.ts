@@ -18,4 +18,6 @@ export interface MediaItem {
   durationSec?: number
   kind?: string
   isDir?: boolean
+  live?: boolean // Live Photo (foto con MOV "motion" abbinato)
+  liveMov?: string // percorso del MOV abbinato (gestito insieme nei trasferimenti)
 }
