@@ -15,7 +15,9 @@ export async function GET(req: Request) {
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'freshphone-site' },
-      next: { revalidate: 300 },
+      // Cache breve: dopo una nuova release il download punta alla versione giusta
+      // entro ~1 min (evita di servire l'installer vecchio), restando sotto i limiti API.
+      next: { revalidate: 60 },
     })
     if (!res.ok) return NextResponse.redirect(RELEASES, 302)
     const rel = (await res.json()) as { assets?: { name?: string; browser_download_url?: string }[] }
