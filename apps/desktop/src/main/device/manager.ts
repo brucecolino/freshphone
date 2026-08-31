@@ -73,9 +73,22 @@ export async function getState(): Promise<DeviceState> {
   return { mode: 'device', state: 'untrusted', toolsOk: true, connected: true, trusted: false, name: s.name, usedBytes: s.usedBytes, totalBytes: s.totalBytes }
 }
 
+// Una libreria da 15.000+ file richiede uno stat AFC per file: con 60s si superava il
+// timeout e la lista tornava VUOTA senza dirlo a nessuno. Ora c'è margine e ogni esito
+// (quanti elementi, quanto ci ha messo, o perché è fallita) finisce nel log diagnostico.
+const LIST_TIMEOUT_MS = 300000
+
 export async function listItems(source: SourceKey): Promise<MediaItem[]> {
   if (readSettings().demo) return mockEngine.list(source)
-  return agent.tryCall<MediaItem[]>('list', { source }, [], 60000)
+  const t0 = Date.now()
+  try {
+    const items = await agent.call<MediaItem[]>('list', { source }, LIST_TIMEOUT_MS)
+    logLine(`device: elenco ${source}: ${items.length} elementi in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
+    return items
+  } catch (e) {
+    logLine(`device: elenco ${source} fallito dopo ${((Date.now() - t0) / 1000).toFixed(1)}s: ${(e as Error).message}`)
+    return []
+  }
 }
 
 export async function browse(path: string): Promise<MediaItem[]> {

@@ -93,6 +93,18 @@ export function Spazio() {
               alcuni telefoni (come iPhone) aggiornano il conteggio dello spazio solo al riavvio, anche se i file sono già stati rimossi.
             </p>
           </div>
+          <div className="mt-3 rounded-lg border border-line bg-bg/40 p-3 text-xs text-ink2">
+            <p className="font-medium text-ink">Perché il telefono conta più foto?</p>
+            <p className="mt-1">
+              Qui contiamo i file <strong>realmente presenti sul telefono</strong> (il rullino, letto dal cavo). L’app Foto dell’iPhone
+              conta invece tutta la libreria <strong>iCloud</strong>: se hai attivo <em>“Ottimizza spazio iPhone”</em>, gli originali non
+              scaricati non esistono sul telefono e via cavo non sono né visibili né trasferibili.
+            </p>
+            <p className="mt-1">
+              Per averli tutti: <em>Impostazioni → [tuo nome] → iCloud → Foto → “Scarica e mantieni originali”</em>, attendi il download
+              (serve spazio libero), poi premi Aggiorna. Anche le Live Photo contano come <strong>un</strong> elemento, come sul telefono.
+            </p>
+          </div>
           <p className="mt-3 text-xs text-ink2">
             “Altro” comprende app, sistema e media non nel rullino (non accessibili via USB). Foto e Video sono calcolati dai file reali del rullino.
           </p>
