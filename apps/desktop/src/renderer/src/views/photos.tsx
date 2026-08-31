@@ -93,7 +93,7 @@ export function Photos() {
       items={view}
       byMonth={byMonth}
       heading="Foto e video"
-      subtitle={loading ? 'Caricamento libreria…' : `${view.length} elementi`}
+      subtitle={loading ? 'Caricamento libreria…' : `${view.length} elementi presenti sul telefono`}
       controls={controls}
     />
   )

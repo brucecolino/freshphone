@@ -9,7 +9,7 @@ Protocollo:
   richiesta:  {"id": <n>, "cmd": "status|list|pair|pull|rm|ping", ...}
   risposta:   {"id": <n>, "ok": true, "result": <...>}  |  {"id": <n>, "ok": false, "error": "..."}
 """
-import sys, os, json, asyncio, io, base64, ctypes
+import sys, os, json, asyncio, io, base64, ctypes, time
 
 # Il protocollo JSON viaggia su stdout. Librerie come onnxruntime/insightface stampano
 # diagnostica su stdout (anche a livello C): la dirotteremmo nel canale corrompendo le
@@ -69,8 +69,23 @@ async def aw(x):
     return await x if asyncio.iscoroutine(x) else x
 
 
-PHOTO_EXT = {'heic', 'heif', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'dng', 'tiff'}
-VIDEO_EXT = {'mov', 'mp4', 'm4v', 'avi'}
+def _log(msg):
+    # Diagnostica: stderr è già raccolto dal main Electron nel log dell'app
+    # (stdout è riservato al protocollo JSON). Scriviamo i byte in UTF-8 perché
+    # Electron decodifica così: con la console Windows (cp1252) gli accenti
+    # arriverebbero storpiati.
+    try:
+        sys.stderr.buffer.write((msg + '\n').encode('utf-8', 'replace'))
+        sys.stderr.buffer.flush()
+    except Exception:
+        try:
+            print(msg, file=sys.stderr, flush=True)
+        except Exception:
+            pass
+
+
+PHOTO_EXT = {'heic', 'heif', 'jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'avif', 'bmp', 'dng', 'tiff', 'tif'}
+VIDEO_EXT = {'mov', 'mp4', 'm4v', 'avi', 'mkv', 'webm', '3gp', 'mpg', 'mpeg'}
 
 # File "personali" mostrati nella sezione File (documenti, audio, immagini salvate…).
 PERSONAL_EXT = {
@@ -195,63 +210,138 @@ class Agent:
         except Exception:
             return str(d) if d else ''
 
+    async def _listdir(self, path, retry=True):
+        # Un errore transitorio (USB sotto carico, sessione AFC caduta) faceva sparire
+        # in silenzio un'INTERA cartella dal conteggio: qui ricreiamo la sessione e
+        # riproviamo una volta, e se fallisce ancora l'errore risale (e viene loggato).
+        try:
+            afc = await self.afc()
+            return await aw(afc.listdir(path))
+        except Exception:
+            if not retry:
+                raise
+            await self._drop_afc()
+            afc = await self.afc()
+            return await aw(afc.listdir(path))
+
     async def listing(self, source):
-        afc = await self.afc()
-        items = []
-        if source == 'photos':
-            try:
-                dirs = await aw(afc.listdir('/DCIM'))
-            except Exception:
-                dirs = []
-            for d in dirs:
-                if d in ('.', '..') or '.' in d:  # salta file sparsi e .MISC
-                    continue
-                try:
-                    files = await aw(afc.listdir('/DCIM/' + d))
-                except Exception:
-                    continue
-                # Riconoscimento Live Photo: il MOV omonimo di una foto è la sua parte
-                # "motion", non un video a sé. Indicizziamo gli still e i MOV per nome base.
-                stills = set()
-                mov_by_base = {}
-                for f in files:
-                    if '.' not in f:
-                        continue
-                    base = f.rsplit('.', 1)[0].lower()
-                    ext = f.rsplit('.', 1)[-1].lower()
-                    if ext in PHOTO_EXT:
-                        stills.add(base)
-                    elif ext == 'mov':
-                        mov_by_base[base] = f
-                for f in files:
-                    if f in ('.', '..') or '.' not in f:
-                        continue
-                    t = ftype(f)
-                    if t == 'file':
-                        continue
-                    base = f.rsplit('.', 1)[0].lower()
-                    ext = f.rsplit('.', 1)[-1].lower()
-                    if ext == 'mov' and base in stills:
-                        continue  # parte motion di una Live Photo: non è un video separato
-                    rel = d + '/' + f
-                    size, date = 0, ''
-                    try:
-                        st = await aw(afc.stat('/DCIM/' + rel))
-                        size = st.get('st_size', 0)
-                        date = self._date(st)
-                    except Exception:
-                        pass
-                    item = {
-                        'id': rel, 'name': f, 'type': t, 'sizeBytes': size, 'date': date,
-                        'kind': 'video' if t == 'video' else f.rsplit('.', 1)[-1].upper(),
-                    }
-                    if t == 'photo' and base in mov_by_base:  # foto con MOV omonimo = Live Photo
-                        item['live'] = True
-                        item['liveMov'] = d + '/' + mov_by_base[base]
-                    items.append(item)
-        else:
+        if source != 'photos':
             return await self.personal_files()
+
+        t0 = time.monotonic()
+        items = []
+        counters = {'live': 0, 'other': 0, 'stat_fail': 0}
+        failed_dirs = []
+
+        try:
+            entries = await self._listdir('/DCIM')
+        except Exception as e:
+            _log('scansione: /DCIM illeggibile (%s): nessun elemento' % e)
+            return []
+
+        # Cartelle o file? Uno stat per voce di primo livello (sono poche, costo nullo).
+        # Prima si tirava a indovinare dal punto nel nome: i file sciolti in /DCIM
+        # (li scrivono alcune app) non venivano MAI conteggiati.
+        folders, loose = [], []
+        for n in entries:
+            if n in ('.', '..') or n.startswith('.'):  # .MISC & co.: cache di sistema
+                continue
+            try:
+                afc = await self.afc()
+                st = await aw(afc.stat('/DCIM/' + n))
+                is_dir = st.get('st_ifmt') == 'S_IFDIR'
+            except Exception:
+                is_dir = '.' not in n
+            (folders if is_dir else loose).append(n)
+
+        async def collect(prefix, names):
+            # Riconoscimento Live Photo: il MOV omonimo di una foto è la sua parte
+            # "motion", non un video a sé. Indicizziamo gli still e i MOV per nome base.
+            stills, mov_by_base = set(), {}
+            for f in names:
+                if '.' not in f:
+                    continue
+                base, ext = f.rsplit('.', 1)[0].lower(), f.rsplit('.', 1)[-1].lower()
+                if ext in PHOTO_EXT:
+                    stills.add(base)
+                elif ext == 'mov':
+                    mov_by_base[base] = f
+            kept = 0
+            for f in names:
+                if f in ('.', '..'):
+                    continue
+                t = ftype(f)
+                if t == 'file':  # documenti, .AAE, sottocartelle: non sono foto/video
+                    counters['other'] += 1
+                    continue
+                base, ext = f.rsplit('.', 1)[0].lower(), f.rsplit('.', 1)[-1].lower()
+                if ext == 'mov' and base in stills:
+                    counters['live'] += 1
+                    continue  # parte motion di una Live Photo: non è un video separato
+                rel = prefix + f
+                size, date = 0, ''
+                try:
+                    afc = await self.afc()
+                    st = await aw(afc.stat('/DCIM/' + rel))
+                    size = st.get('st_size', 0)
+                    date = self._date(st)
+                except Exception:
+                    counters['stat_fail'] += 1
+                item = {
+                    'id': rel, 'name': f, 'type': t, 'sizeBytes': size, 'date': date,
+                    'kind': 'video' if t == 'video' else ext.upper(),
+                }
+                if t == 'photo' and base in mov_by_base:  # foto con MOV omonimo = Live Photo
+                    item['live'] = True
+                    item['liveMov'] = prefix + mov_by_base[base]
+                items.append(item)
+                kept += 1
+            return kept
+
+        for d in folders:
+            try:
+                names = await self._listdir('/DCIM/' + d)
+            except Exception as e:
+                failed_dirs.append(d)
+                _log('scansione: cartella /DCIM/%s NON letta (%s): i suoi file non sono conteggiati' % (d, e))
+                continue
+            kept = await collect(d + '/', names)
+            _log('scansione: /DCIM/%s → %d elementi su %d voci' % (d, kept, len(names)))
+        if loose:
+            kept = await collect('', loose)
+            _log('scansione: /DCIM (file sciolti) → %d elementi su %d voci' % (kept, len(loose)))
+
+        _log('scansione: TOTALE %d elementi in %d/%d cartelle, %.1fs '
+             '(live photo accorpate: %d, non media: %d, stat falliti: %d%s)'
+             % (len(items), len(folders) - len(failed_dirs), len(folders), time.monotonic() - t0,
+                counters['live'], counters['other'], counters['stat_fail'],
+                (', CARTELLE PERSE: ' + ', '.join(failed_dirs)) if failed_dirs else ''))
+        await self._icloud_hint(len(items))
         return items
+
+    async def _icloud_hint(self, local_count):
+        # Diagnostica del divario di conteggio. Con iCloud Foto + "Ottimizza spazio
+        # iPhone" l'originale dei file non scaricati NON esiste in /DCIM: il telefono
+        # li conta (li legge dal suo database), l'USB non può vederli. Qui misuriamo
+        # quanti asset gestisce iCloud, così il log dice se il divario è questo.
+        try:
+            groups = await self._listdir('/PhotoData/CPLAssets', retry=False)
+        except Exception:
+            return  # niente CPLAssets = iCloud Foto non attivo
+        total, seen = 0, 0
+        for g in groups:
+            if not g.startswith('group') or seen >= 64:
+                continue
+            seen += 1
+            try:
+                names = await self._listdir('/PhotoData/CPLAssets/' + g, retry=False)
+            except Exception:
+                continue
+            total += sum(1 for x in names if x not in ('.', '..'))
+        if total:
+            _log('scansione: iCloud Foto attivo — PhotoData/CPLAssets: %d file in %d gruppi. '
+                 'Gli asset con originale solo su iCloud non sono in /DCIM e non sono trasferibili '
+                 'via cavo (sul telefono: %d elementi presenti in locale).' % (total, seen, local_count))
 
     async def personal_files(self):
         afc = await self.afc()

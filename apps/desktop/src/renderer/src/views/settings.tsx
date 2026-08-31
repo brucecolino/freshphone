@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from '../store/theme'
+import { LogModal } from '../components/LogModal'
 import { cn } from '../lib/cn'
 
 const modes = [
@@ -25,6 +26,7 @@ export function Settings() {
   const [licMsg, setLicMsg] = useState<string | null>(null)
   const [activating, setActivating] = useState(false)
 
+  const [showLog, setShowLog] = useState(false)
   const [ver, setVer] = useState('')
   const [upState, setUpState] = useState<'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'>('idle')
   const [upInfo, setUpInfo] = useState<{ version?: string; notes?: string; percent?: number; message?: string }>({})
@@ -204,7 +206,21 @@ export function Settings() {
         {upState === 'error' && <p className="mt-2 text-xs text-ink2">{upInfo.message}</p>}
       </div>
 
+      <div className="mt-4 rounded-xl2 border border-line bg-surface p-5">
+        <h2 className="font-display font-semibold">Diagnostica</h2>
+        <p className="mt-2 text-xs text-ink2">
+          Il log riporta il dettaglio dell’ultima scansione: quanti elementi per cartella, eventuali cartelle non leggibili e se
+          la libreria è gestita da iCloud. Utile quando il numero di foto non coincide con quello del telefono.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={() => setShowLog(true)} className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-bg">
+            Apri log diagnostico
+          </button>
+        </div>
+      </div>
+
       <p className="mt-6 text-xs text-ink2">FreshPhone · versione {ver || '0.1.0'}</p>
+      {showLog && <LogModal onClose={() => setShowLog(false)} />}
     </div>
   )
 }
